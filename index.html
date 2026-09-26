@@ -1,10 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Argentina TV - IPTV Org</title>
+  <title>Argentina TV</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     :root {
@@ -41,6 +40,9 @@
       align-items: center;
       flex-wrap: wrap;
       gap: 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
 
     .logo {
@@ -81,6 +83,8 @@
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
+      height: 100%;
+      overflow: hidden;
     }
 
     .channel-list {
@@ -124,6 +128,9 @@
       display: flex;
       flex-direction: column;
       background-color: #000;
+      height: 100%;
+      position: sticky;
+      top: 70px;
     }
 
     .player-container {
@@ -131,30 +138,20 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      background-color: #000;
     }
 
     video {
       width: 100%;
       height: 100%;
       max-height: 100%;
+      object-fit: contain;
     }
 
     .placeholder {
       color: var(--text-muted);
       text-align: center;
       padding: 2rem;
-    }
-
-    .open-btn {
-      display: inline-block;
-      margin-top: 1rem;
-      background-color: var(--primary);
-      color: #0f172a;
-      padding: 0.6rem 1.2rem;
-      border-radius: 6px;
-      text-decoration: none;
-      font-weight: bold;
-      font-size: 0.9rem;
     }
 
     .stream-info {
@@ -164,9 +161,21 @@
     }
 
     @media (max-width: 768px) {
-      .container { flex-direction: column-reverse; height: auto; }
-      .sidebar { width: 100%; height: 350px; }
-      .player-container { height: 56.25vw; }
+      .container { 
+        flex-direction: column; 
+        height: auto; 
+        overflow: visible;
+      }
+      .main-content {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        height: 56.25vw;
+      }
+      .sidebar { 
+        width: 100%; 
+        height: calc(100vh - 56.25vw); 
+      }
     }
   </style>
 </head>
@@ -182,7 +191,7 @@
   <div class="container">
     <aside class="sidebar">
       <ul class="channel-list" id="channelList">
-        <li class="placeholder">Cargando canales...</li>
+        <li class="placeholder">Verificando canales disponibles...</li>
       </ul>
     </aside>
 
@@ -197,25 +206,28 @@
   </div>
 
   <script>
-    const M3U_URL = 'https://iptv-org.github.io/iptv/countries/ar.m3u8';
+    const M3U_URL = 'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ar.m3u';
 
     let channels = [];
+    let activeChannels = [];
     let hlsInstance = null;
 
     async function loadM3UPlaylist() {
       try {
         const response = await fetch(M3U_URL);
-        if (!response.ok) throw new Error('Error al conectar');
+        if (!response.ok) throw new Error('Error de red');
         const text = await response.text();
-        parseM3U(text);
-        renderChannels();
+        const parsed = parseM3U(text);
+        
+        // Verificar cuáles funcionan en segundo plano
+        validateAndRenderChannels(parsed);
       } catch (error) {
         document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al obtener la lista de canales.</li>';
       }
     }
 
     function parseM3U(data) {
-      channels = [];
+      const list = [];
       const lines = data.split('\n');
       let currentChannel = {};
 
@@ -224,7 +236,6 @@
         if (line.startsWith('#EXTINF:')) {
           const commaIndex = line.indexOf(',');
           const name = commaIndex !== -1 ? line.substring(commaIndex + 1).trim() : 'Canal sin nombre';
-          
           const logoMatch = line.match(/tvg-logo="([^"]+)"/);
           const logo = logoMatch ? logoMatch[1] : '';
 
@@ -232,11 +243,49 @@
         } else if (line.startsWith('http')) {
           if (currentChannel.name) {
             currentChannel.url = line;
-            channels.push(currentChannel);
+            list.push(currentChannel);
             currentChannel = {};
           }
         }
       });
+      return list;
+    }
+
+    // Comprueba disponibilidad del stream antes de mantenerlo en la lista
+    async function checkStream(url) {
+      try {
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), 3500);
+        const res = await fetch(url, { method: 'HEAD', signal: controller.signal });
+        clearTimeout(id);
+        return res.ok;
+      } catch {
+        return false;
+      }
+    }
+
+    async function validateAndRenderChannels(parsedList) {
+      activeChannels = [];
+      
+      // Primera pasada renderizada para respuesta rápida
+      channels = parsedList;
+      renderChannels();
+
+      // Validación paralela
+      const checks = parsedList.map(async (channel) => {
+        const isValid = await checkStream(channel.url);
+        if (isValid) {
+          activeChannels.push(channel);
+        }
+      });
+
+      await Promise.all(checks);
+      
+      // Si la verificación estricta filtró canales válidos, actualiza la lista con solo los operativos
+      if (activeChannels.length > 0) {
+        channels = activeChannels;
+      }
+      renderChannels();
     }
 
     function renderChannels() {
@@ -247,7 +296,7 @@
       const filtered = channels.filter(channel => channel.name.toLowerCase().includes(searchTerm));
 
       if (filtered.length === 0) {
-        listElement.innerHTML = '<li class="placeholder">No se encontraron canales.</li>';
+        listElement.innerHTML = '<li class="placeholder">No se encontraron canales disponibles.</li>';
         return;
       }
 
@@ -287,8 +336,6 @@
       video.autoplay = true;
       container.appendChild(video);
 
-      const ytQuery = `https://www.youtube.com/results?search_query=${encodeURIComponent(channel.name + ' en vivo')}`;
-
       if (Hls.isSupported()) {
         hlsInstance = new Hls();
         hlsInstance.loadSource(channel.url);
@@ -296,11 +343,10 @@
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play());
         hlsInstance.on(Hls.Events.ERROR, (event, data) => {
           if (data.fatal) {
-            container.innerHTML = `
-              <div class="placeholder">
-                <p>El stream directo de ${channel.name} no está disponible actualmente.</p>
-                <a href="${ytQuery}" target="_blank" class="open-btn">Buscar emisión alternativa en YouTube ↗</a>
-              </div>`;
+            // Remueve el canal si falla al intentar reproducirse
+            channels = channels.filter(c => c.url !== channel.url);
+            renderChannels();
+            container.innerHTML = '<div class="placeholder">Canal no disponible temporalmente.</div>';
           }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
