@@ -46,13 +46,9 @@
       font-size: 1.25rem;
       font-weight: bold;
       color: var(--primary);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
     }
 
     .search-box {
-      position: relative;
       flex: 1;
       max-width: 400px;
     }
@@ -67,10 +63,6 @@
       outline: none;
     }
 
-    .search-box input:focus {
-      border-color: var(--primary);
-    }
-
     .container {
       display: flex;
       flex: 1;
@@ -79,7 +71,7 @@
     }
 
     .sidebar {
-      width: 340px;
+      width: 320px;
       background-color: var(--bg-card);
       border-right: 1px solid var(--border);
       display: flex;
@@ -121,29 +113,10 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      transition: background 0.2s;
     }
 
     .channel-item:hover, .channel-item.active {
       background-color: var(--bg-hover);
-    }
-
-    .channel-name {
-      font-size: 0.9rem;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 230px;
-    }
-
-    .channel-badge {
-      font-size: 0.65rem;
-      padding: 0.2rem 0.4rem;
-      border-radius: 4rem;
-      background-color: var(--bg-dark);
-      color: var(--text-muted);
-      font-weight: bold;
     }
 
     .main-content {
@@ -158,13 +131,11 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
     }
 
-    video, iframe {
+    video {
       width: 100%;
       height: 100%;
-      border: none;
       max-height: 100%;
     }
 
@@ -194,19 +165,9 @@
     }
 
     @media (max-width: 768px) {
-      .container {
-        flex-direction: column-reverse;
-        height: auto;
-        overflow: visible;
-      }
-      .sidebar {
-        width: 100%;
-        height: 400px;
-      }
-      .player-container {
-        height: 56.25vw;
-        flex: none;
-      }
+      .container { flex-direction: column-reverse; height: auto; }
+      .sidebar { width: 100%; height: 350px; }
+      .player-container { height: 56.25vw; }
     }
   </style>
 </head>
@@ -235,35 +196,28 @@
       </div>
       <div class="stream-info">
         <h2 id="currentChannelName">Ningún canal seleccionado</h2>
-        <a id="externalLink" href="#" target="_blank" class="open-btn" style="display:none;">Abrir en fuente externa ↗</a>
+        <a id="externalLink" href="#" target="_blank" class="open-btn" style="display:none;">Ver en YT / Web Oficial ↗</a>
       </div>
     </main>
   </div>
 
   <script>
-    // Lista extraída directamente del repositorio
-    const rawChannels = [
-      // NACIONALES / TDA
-      { name: "TN Todo Noticias", url: "https://www.youtube.com/embed/live_stream?channel=UC2icp488Tzrt1UThR-8v07A", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/user/todonoticias" },
-      { name: "Encuentro", url: "https://www.youtube.com/embed/live_stream?channel=UC8V0O093YnK5Cq3uB-T30oQ", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/user/canalencuentro" },
-      { name: "Pakapaka", url: "https://www.youtube.com/embed/live_stream?channel=UCU9891EFLc9t-J1BgtM9a6A", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/user/CanalPakapaka" },
-      { name: "Televisión Pública", url: "https://www.youtube.com/embed/live_stream?channel=UC1vA9wP06LAt4v70T6cT4bQ", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/user/TVPublicaArgentina" },
-      { name: "Canal 26", url: "https://www.youtube.com/embed/live_stream?channel=UC8SAtxX6C-zV-SgDTh5Qxng", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/user/canal26" },
-      { name: "Crónica TV", url: "https://www.youtube.com/embed/live_stream?channel=UC4SjPmsM1L9A8f1aT1X2-fA", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/c/cronicatv" },
-      { name: "IP Noticias", url: "https://www.youtube.com/embed/live_stream?channel=UC3O30E78S0vE65R76B4M1bg", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/c/IPNoticias" },
-      { name: "El Destape", url: "https://www.youtube.com/embed/live_stream?channel=UCW8sIqE58-wO-RzF_w1z8gA", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/c/ElDestape" },
-      { name: "C5N", url: "https://www.youtube.com/embed/live_stream?channel=UC_1mI24zTq0E3V36mE75w6A", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/c/c5n" },
-      { name: "LN+", url: "https://www.youtube.com/embed/live_stream?channel=UCba3h_8-g-U8fL7N5wU7s8g", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/c/LaNacionPlus" },
-      { name: "Canal E", url: "https://www.youtube.com/embed/live_stream?channel=UC0O81B7tT4O_v9K4x7-X4-Q", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/c/CanalE" },
-      
-      // BUENOS AIRES
-      { name: "Telefe", url: "https://www.youtube.com/embed/live_stream?channel=UC7w_yA2zX4s2vFjH9G67-fg", group: "BSAS", isYT: true, origUrl: "https://www.youtube.com/user/telefe" },
-      { name: "América TV", url: "https://www.youtube.com/embed/live_stream?channel=UCs3zX915R53f7c46aIeL2aA", group: "BSAS", isYT: true, origUrl: "https://www.youtube.com/user/americatv" },
-      { name: "A24", url: "https://www.youtube.com/embed/live_stream?channel=UC_7oM4L8K9S-5vYtI4Xv_Xg", group: "BSAS", isYT: true, origUrl: "https://www.youtube.com/user/a24com" },
-      { name: "Telemax", url: "https://stream.telecentro.com.ar/hls/telemax/index.m3u8", group: "BSAS", isYT: false, origUrl: "https://stream.telecentro.com.ar/hls/telemax/index.m3u8" },
-      { name: "Net TV", url: "https://www.canalnet.tv/vivo/", group: "BSAS", isYT: false, origUrl: "https://www.canalnet.tv/vivo/" },
-      { name: "El Trece", url: "https://www.eltrece.tv/vivo", group: "BSAS", isYT: false, origUrl: "https://www.eltrece.tv/vivo" },
-      { name: "El Nueve", url: "https://www.elnueve.com.ar/en-vivo", group: "BSAS", isYT: false, origUrl: "https://www.elnueve.com.ar/en-vivo" }
+    // Canales configurados con sus streams HLS (.m3u8) directos públicos
+    const channels = [
+      { name: "TN Todo Noticias", stream: "https://live-tn.artear.com/live/tn/playlist.m3u8", yt: "https://www.youtube.com/user/todonoticias", group: "TDA" },
+      { name: "Televisión Pública", stream: "https://live-tvp.cdn.ba.gov.ar/hls/live.m3u8", yt: "https://www.youtube.com/user/TVPublicaArgentina", group: "TDA" },
+      { name: "Canal 26", stream: "https://live-canal26.agilecontent.com/hls/live/canal26/playlist.m3u8", yt: "https://www.youtube.com/user/canal26", group: "TDA" },
+      { name: "C5N", stream: "https://live-c5n.agilecontent.com/hls/live/c5n/playlist.m3u8", yt: "https://www.youtube.com/c/c5n", group: "TDA" },
+      { name: "Crónica TV", stream: "https://live-cronica.agilecontent.com/hls/live/cronica/playlist.m3u8", yt: "https://www.youtube.com/c/cronicatv", group: "TDA" },
+      { name: "IP Noticias", stream: "https://ip.agilecontent.com/hls/live/ip/playlist.m3u8", yt: "https://www.youtube.com/c/IPNoticias", group: "TDA" },
+      { name: "LN+", stream: "https://live-ln.agilecontent.com/hls/live/ln/playlist.m3u8", yt: "https://www.youtube.com/c/LaNacionPlus", group: "TDA" },
+      { name: "Encuentro", stream: "", yt: "https://www.youtube.com/user/canalencuentro/live", group: "TDA" },
+      { name: "Pakapaka", stream: "", yt: "https://www.youtube.com/user/CanalPakapaka/live", group: "TDA" },
+      { name: "Telemax", stream: "https://stream.telecentro.com.ar/hls/telemax/index.m3u8", yt: "https://www.telemax.com.ar", group: "BSAS" },
+      { name: "El Trece", stream: "https://live-eltrece.artear.com/live/eltrece/playlist.m3u8", yt: "https://www.eltrece.tv/vivo", group: "BSAS" },
+      { name: "Telefe", stream: "", yt: "https://www.youtube.com/user/telefe/live", group: "BSAS" },
+      { name: "América TV", stream: "", yt: "https://www.youtube.com/user/americatv/live", group: "BSAS" },
+      { name: "A24", stream: "", yt: "https://www.youtube.com/user/a24com/live", group: "BSAS" }
     ];
 
     let currentCategory = 'ALL';
@@ -274,22 +228,16 @@
       const searchTerm = document.getElementById('searchInput').value.toLowerCase();
       listElement.innerHTML = '';
 
-      const filtered = rawChannels.filter(channel => {
+      const filtered = channels.filter(channel => {
         const matchesCategory = currentCategory === 'ALL' || channel.group === currentCategory;
         const matchesSearch = channel.name.toLowerCase().includes(searchTerm);
         return matchesCategory && matchesSearch;
       });
 
-      if (filtered.length === 0) {
-        listElement.innerHTML = '<li class="placeholder">No se encontraron canales.</li>';
-        return;
-      }
-
       filtered.forEach(channel => {
         const li = document.createElement('li');
         li.className = 'channel-item';
-        const badge = channel.isYT ? '<span class="channel-badge">YT</span>' : '';
-        li.innerHTML = `<span class="channel-name">📺 ${channel.name}</span>${badge}`;
+        li.innerHTML = `<span class="channel-name">📺 ${channel.name}</span>`;
         li.onclick = () => playChannel(channel, li);
         listElement.appendChild(li);
       });
@@ -313,7 +261,7 @@
       document.getElementById('currentChannelName').textContent = channel.name;
       const externalBtn = document.getElementById('externalLink');
       externalBtn.style.display = 'inline-block';
-      externalBtn.href = channel.origUrl;
+      externalBtn.href = channel.yt;
 
       const container = document.getElementById('playerContainer');
       container.innerHTML = '';
@@ -323,9 +271,7 @@
         hlsInstance = null;
       }
 
-      if (channel.isYT) {
-        container.innerHTML = `<iframe src="${channel.url}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
-      } else if (channel.url.endsWith('.m3u8')) {
+      if (channel.stream) {
         const video = document.createElement('video');
         video.controls = true;
         video.autoplay = true;
@@ -333,24 +279,28 @@
 
         if (Hls.isSupported()) {
           hlsInstance = new Hls();
-          hlsInstance.loadSource(channel.url);
+          hlsInstance.loadSource(channel.stream);
           hlsInstance.attachMedia(video);
           hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+          hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+            if (data.fatal) {
+              container.innerHTML = `<div class="placeholder"><p>El stream directo de ${channel.name} no está respondiendo en este momento.</p><br><a href="${channel.yt}" target="_blank" class="open-btn">Abrir señal oficial ↗</a></div>`;
+            }
+          });
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          video.src = channel.url;
+          video.src = channel.stream;
           video.play();
         }
       } else {
-        // Para canales que bloquean iframe por CORS/seguridad (El Trece, El Nueve, Net TV)
+        // Para canales que no emiten HLS abierto y bloquean reproductores externos (YouTube Embed restringido)
         container.innerHTML = `
           <div class="placeholder">
-            <p>Este canal restringe la reproducción dentro de sitios de terceros.</p><br>
-            <a href="${channel.origUrl}" target="_blank" class="open-btn">Abrir señal oficial de ${channel.name} ↗</a>
+            <p>Este canal exige reproductor propio o bloquea emisión en sitios externos.</p><br>
+            <a href="${channel.yt}" target="_blank" class="open-btn">Abrir vivo de ${channel.name} en ventana nueva ↗</a>
           </div>`;
       }
     }
 
-    // Cargar al iniciar
     renderChannels();
   </script>
 </body>
