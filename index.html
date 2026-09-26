@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Argentina TV</title>
+  <!-- HLS.js para reproducción de streams .m3u8 en navegadores que no lo soportan nativamente -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-card: #1e293b;
+      --bg-hover: #334155;
+      --primary: #38bdf8;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background-color: var(--bg-card);
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .logo {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 400px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      outline: none;
+    }
+
+    .search-box input:focus {
+      border-color: var(--primary);
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 70px);
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 320px;
+      background-color: var(--bg-card);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .filter-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .filter-btn {
+      flex: 1;
+      padding: 0.75rem;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.85rem;
+      border-bottom: 2px solid transparent;
+    }
+
+    .filter-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .channel-list {
+      flex: 1;
+      overflow-y: auto;
+      list-style: none;
+    }
+
+    .channel-item {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s;
+    }
+
+    .channel-item:hover, .channel-item.active {
+      background-color: var(--bg-hover);
+    }
+
+    .channel-name {
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    .channel-badge {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.4rem;
+      border-radius: 4rem;
+      background-color: var(--bg-dark);
+      color: var(--text-muted);
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: #000;
+    }
+
+    .player-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    video, iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      max-height: 100%;
+    }
+
+    .placeholder {
+      color: var(--text-muted);
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .stream-info {
+      background-color: var(--bg-card);
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column-reverse;
+        height: auto;
+        overflow: visible;
+      }
+      .sidebar {
+        width: 100%;
+        height: 400px;
+      }
+      .player-container {
+        height: 56.25vw; /* Ratio 16:9 */
+        flex: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="logo">🇦🇷 Argentina TV</div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Buscar canal..." oninput="filterChannels()">
+    </div>
+  </header>
+
+  <div class="container">
+    <aside class="sidebar">
+      <div class="filter-tabs">
+        <button class="filter-btn active" onclick="setCategory('ALL', this)">TODOS</button>
+        <button class="filter-btn" onclick="setCategory('TDA', this)">TDA / NACIONALES</button>
+        <button class="filter-btn" onclick="setCategory('BSAS', this)">BUENOS AIRES</button>
+      </div>
+      <ul class="channel-list" id="channelList">
+        <li class="placeholder">Cargando lista de canales...</li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <div class="player-container" id="playerContainer">
+        <div class="placeholder">Seleccioná un canal de la lista para empezar a transmitir.</div>
+      </div>
+      <div class="stream-info" id="streamInfo">
+        <h2 id="currentChannelName">Ningún canal seleccionado</h2>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/ShareASmile/FREE-IPTV/master/lists/argentina.md';
+    let channels = [];
+    let currentCategory = 'ALL';
+    let hlsInstance = null;
+
+    async function loadChannels() {
+      try {
+        const response = await fetch(GITHUB_RAW_URL);
+        const text = await response.text();
+        parseMarkdownList(text);
+        renderChannels();
+      } catch (error) {
+        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al cargar la lista. Verificá tu conexión.</li>';
+      }
+    }
+
+    function parseMarkdownList(text) {
+      const lines = text.split('\n');
+      let currentGroup = 'NACIONALES';
+
+      lines.forEach(line => {
+        if (line.includes('Buenos Aires')) {
+          currentGroup = 'BSAS';
+        } else if (line.includes('TDA') || line.includes('Nacionales')) {
+          currentGroup = 'TDA';
+        }
+
+        // Expresión regular para detectar links formateados en Markdown: [Nombre](URL)
+        const match = line.match(/\[(.*?)\]\((.*?)\)/);
+        if (match) {
+          const name = match[1].trim();
+          const url = match[2].trim();
+          
+          if (url.startsWith('http')) {
+            channels.push({
+              name: name,
+              url: url,
+              group: currentGroup,
+              isYouTube: url.includes('youtube.com') || url.includes('youtu.be')
+            });
+          }
+        }
+      });
+    }
+
+    function renderChannels() {
+      const listElement = document.getElementById('channelList');
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      listElement.innerHTML = '';
+
+      const filtered = channels.filter(channel => {
+        const matchesCategory = currentCategory === 'ALL' || channel.group === currentCategory;
+        const matchesSearch = channel.name.toLowerCase().includes(searchTerm);
+        return matchesCategory && matchesSearch;
+      });
+
+      if (filtered.length === 0) {
+        listElement.innerHTML = '<li class="placeholder">No se encontraron canales.</li>';
+        return;
+      }
+
+      filtered.forEach(channel => {
+        const li = document.createElement('li');
+        li.className = 'channel-item';
+        
+        const isYT = channel.isYouTube ? ' <span class="channel-badge">YT</span>' : '';
+        li.innerHTML = `<span class="channel-name">📺 ${channel.name}</span>${isYT}`;
+        
+        li.onclick = () => playChannel(channel, li);
+        listElement.appendChild(li);
+      });
+    }
+
+    function setCategory(category, button) {
+      currentCategory = category;
+      document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      renderChannels();
+    }
+
+    function filterChannels() {
+      renderChannels();
+    }
+
+    function playChannel(channel, element) {
+      document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
+      if (element) element.classList.add('active');
+
+      document.getElementById('currentChannelName').textContent = channel.name;
+      const container = document.getElementById('playerContainer');
+      container.innerHTML = '';
+
+      if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
+
+      if (channel.isYouTube) {
+        // Formatear enlace para reproductor de YouTube Embed
+        let videoId = '';
+        if (channel.url.includes('v=')) {
+          videoId = channel.url.split('v=')[1].split('&')[0];
+        } else if (channel.url.includes('youtu.be/')) {
+          videoId = channel.url.split('youtu.be/')[1].split('?')[0];
+        } else if (channel.url.includes('/live/')) {
+          videoId = channel.url.split('/live/')[1].split('?')[0];
+        }
+
+        if (videoId) {
+          container.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+        } else {
+          window.open(channel.url, '_blank');
+        }
+      } else {
+        // Reproducción de streaming directo (HLS / m3u8)
+        const video = document.createElement('video');
+        video.controls = true;
+        video.autoplay = true;
+        container.appendChild(video);
+
+        if (Hls.isSupported()) {
+          hlsInstance = new Hls();
+          hlsInstance.loadSource(channel.url);
+          hlsInstance.attachMedia(video);
+          hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          // Soporte nativo de HLS (ej. Safari / iOS)
+          video.src = channel.url;
+          video.play();
+        } else {
+          container.innerHTML = '<div class="placeholder">Este formato de video no es compatible con tu navegador.</div>';
+        }
+      }
+    }
+
+    // Inicializar al cargar la página
+    loadChannels();
+  </script>
+</body>
+</html>
