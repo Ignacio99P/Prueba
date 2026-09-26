@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Argentina TV - IPTV</title>
+  <title>Argentina TV - IPTV Org</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     :root {
@@ -75,7 +76,7 @@
     }
 
     .sidebar {
-      width: 320px;
+      width: 340px;
       background-color: var(--bg-card);
       border-right: 1px solid var(--border);
       display: flex;
@@ -93,13 +94,21 @@
       border-bottom: 1px solid var(--border);
       cursor: pointer;
       display: flex;
-      justify-content: space-between;
       align-items: center;
+      gap: 0.75rem;
       transition: background 0.2s;
     }
 
     .channel-item:hover, .channel-item.active {
       background-color: var(--bg-hover);
+    }
+
+    .channel-logo {
+      width: 30px;
+      height: 30px;
+      object-fit: contain;
+      border-radius: 4px;
+      background-color: rgba(255, 255, 255, 0.05);
     }
 
     .channel-name {
@@ -136,6 +145,18 @@
       padding: 2rem;
     }
 
+    .open-btn {
+      display: inline-block;
+      margin-top: 1rem;
+      background-color: var(--primary);
+      color: #0f172a;
+      padding: 0.6rem 1.2rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+
     .stream-info {
       background-color: var(--bg-card);
       padding: 1rem 1.5rem;
@@ -152,7 +173,7 @@
 <body>
 
   <header>
-    <div class="logo">🇦🇷 Argentina TV</div>
+    <div class="logo">🇦🇷 Argentina TV (iptv-org)</div>
     <div class="search-box">
       <input type="text" id="searchInput" placeholder="Buscar canal..." oninput="filterChannels()">
     </div>
@@ -161,7 +182,7 @@
   <div class="container">
     <aside class="sidebar">
       <ul class="channel-list" id="channelList">
-        <li class="placeholder">Cargando lista M3U8...</li>
+        <li class="placeholder">Cargando canales desde iptv-org...</li>
       </ul>
     </aside>
 
@@ -176,7 +197,9 @@
   </div>
 
   <script>
-    const M3U8_URL = 'https://raw.githubusercontent.com/Free-TV/IPTV/master/argentina.m3u8';
+    // Enlace Raw directo de la lista M3U de Argentina de iptv-org
+    const M3U_URL = 'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ar.m3u';
+
     let channels = [];
     let hlsInstance = null;
 
@@ -187,30 +210,32 @@
         parseM3U(text);
         renderChannels();
       } catch (error) {
-        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al obtener la lista IPTV.</li>';
+        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al obtener la lista de iptv-org.</li>';
       }
     }
 
     function parseM3U(data) {
       channels = [];
       const lines = data.split('\n');
-      let currentName = '';
+      let currentChannel = {};
 
       lines.forEach(line => {
         line = line.trim();
         if (line.startsWith('#EXTINF:')) {
-          // Extraer el nombre del canal después de la coma
+          // Extraer nombre del canal
           const commaIndex = line.indexOf(',');
-          if (commaIndex !== -1) {
-            currentName = line.substring(commaIndex + 1).trim();
-          }
+          const name = commaIndex !== -1 ? line.substring(commaIndex + 1).trim() : 'Canal sin nombre';
+          
+          // Extraer logo si existe (tvg-logo)
+          const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+          const logo = logoMatch ? logoMatch[1] : '';
+
+          currentChannel = { name, logo };
         } else if (line.startsWith('http')) {
-          if (currentName) {
-            channels.push({
-              name: currentName,
-              url: line
-            });
-            currentName = '';
+          if (currentChannel.name) {
+            currentChannel.url = line;
+            channels.push(currentChannel);
+            currentChannel = {};
           }
         }
       });
@@ -231,7 +256,12 @@
       filtered.forEach(channel => {
         const li = document.createElement('li');
         li.className = 'channel-item';
-        li.innerHTML = `<span class="channel-name">📺 ${channel.name}</span>`;
+        
+        const logoHtml = channel.logo 
+          ? `<img class="channel-logo" src="${channel.logo}" alt="" onerror="this.style.display='none'">` 
+          : `<span style="font-size: 1.2rem;">📺</span>`;
+
+        li.innerHTML = `${logoHtml}<span class="channel-name">${channel.name}</span>`;
         li.onclick = () => playChannel(channel, li);
         listElement.appendChild(li);
       });
@@ -259,6 +289,8 @@
       video.autoplay = true;
       container.appendChild(video);
 
+      const ytQuery = `https://www.youtube.com/results?search_query=${encodeURIComponent(channel.name + ' en vivo')}`;
+
       if (Hls.isSupported()) {
         hlsInstance = new Hls();
         hlsInstance.loadSource(channel.url);
@@ -266,7 +298,11 @@
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play());
         hlsInstance.on(Hls.Events.ERROR, (event, data) => {
           if (data.fatal) {
-            container.innerHTML = '<div class="placeholder">Canal fuera de servicio o con señal caída temporalmente.</div>';
+            container.innerHTML = `
+              <div class="placeholder">
+                <p>El stream directo de ${channel.name} no está disponible actualmente.</p>
+                <a href="${ytQuery}" target="_blank" class="open-btn">Buscar emisión alternativa en YouTube ↗</a>
+              </div>`;
           }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -277,6 +313,8 @@
       }
     }
 
+    // Usamos el enlace raw del repo de GitHub
+    const M3U8_URL = 'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ar.m3u';
     loadM3UPlaylist();
   </script>
 </body>
