@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Argentina TV</title>
+  <title>IPTV Player</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
   <style>
@@ -210,7 +210,7 @@
 <body>
 
   <header>
-    <div class="logo">🇦🇷 Argentina TV</div>
+    <div class="logo">📺 Mi Lista IPTV</div>
     <div class="search-box">
       <input type="text" id="searchInput" placeholder="Buscar canal..." oninput="filterChannels()">
     </div>
@@ -236,13 +236,8 @@
 
   <script>
     const CORS_PROXY = 'https://corsproxy.io/?';
-
-    const M3U_SOURCES = [
-      { url: 'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ar.m3u', baseUrl: 'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/' },
-      { url: 'http://200.62.239.170:830/playlist.m3u8', baseUrl: 'http://200.62.239.170:830/' }
-    ];
-
-    const EXTRA_CHANNELS = [{ name: 'ESPN Premium Argentina', logo: '', url: 'http://200.62.239.170:830/play/a00p/index.m3u8' }];
+    const PLAYLIST_URL = 'http://200.62.239.170:830/playlist.m3u8';
+    const BASE_URL = 'http://200.62.239.170:830/';
 
     let channels = [];
     let hlsInstance = null;
@@ -250,35 +245,23 @@
     let castSession = null;
     let castAvailable = false;
 
-    async function fetchPlaylist(source) {
-      const fetchUrl = source.url.startsWith('http://') 
-        ? CORS_PROXY + encodeURIComponent(source.url) 
-        : source.url;
-
-      const response = await fetch(fetchUrl);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const text = await response.text();
-      return parseM3U(text, source.baseUrl);
-    }
-
     async function loadM3UPlaylist() {
       try {
-        const results = await Promise.allSettled(
-          M3U_SOURCES.map(source => fetchPlaylist(source))
-        );
-
-        const loaded = results
-          .filter(result => result.status === 'fulfilled')
-          .flatMap(result => result.value);
-
-        channels = deduplicateChannels([...loaded, ...EXTRA_CHANNELS]);
+        const fetchUrl = CORS_PROXY + encodeURIComponent(PLAYLIST_URL);
+        const response = await fetch(fetchUrl);
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const text = await response.text();
+        channels = parseM3U(text, BASE_URL);
         renderChannels();
 
         if (!channels.length) {
-          throw new Error('No se pudo cargar ninguna lista');
+          throw new Error('No se encontraron canales en la lista');
         }
       } catch (error) {
-        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al obtener la lista de canales.</li>';
+        console.error(error);
+        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al cargar la lista de canales.</li>';
       }
     }
 
@@ -299,6 +282,7 @@
           currentChannel = { name, logo, group };
         } else if (line && !line.startsWith('#')) {
           let streamUrl = line;
+          // Si la URL es relativa, la convertimos en una URL completa apuntando al servidor
           if (!/^https?:\/\//i.test(streamUrl)) {
             streamUrl = new URL(streamUrl, baseUrl).href;
           }
@@ -310,16 +294,6 @@
         }
       });
       return parsed;
-    }
-
-    function deduplicateChannels(list) {
-      const seen = new Set();
-      return list.filter(channel => {
-        const key = `${channel.name.toLowerCase()}|${channel.url}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
     }
 
     function renderChannels() {
@@ -371,6 +345,7 @@
       video.autoplay = true;
       container.appendChild(video);
 
+      // Usamos el proxy para la reproducción si la transmisión no es HTTPS
       let playableUrl = channel.url;
       if (playableUrl.startsWith('http://')) {
         playableUrl = CORS_PROXY + encodeURIComponent(playableUrl);
@@ -383,9 +358,7 @@
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play());
         hlsInstance.on(Hls.Events.ERROR, (event, data) => {
           if (data.fatal) {
-            channels = channels.filter(c => c.url !== channel.url);
-            renderChannels();
-            container.innerHTML = '<div class="placeholder">Seleccioná un canal para reproducir.</div>';
+            container.innerHTML = '<div class="placeholder">Error al reproducir la transmisión.</div>';
           }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
