@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Argentina TV</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
   <style>
     :root {
       --bg-dark: #0f172a;
@@ -179,26 +178,6 @@
       padding: 1rem 1.5rem;
       border-top: 1px solid var(--border);
       flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-    }
-
-    #castButton {
-      display: none;
-      border: 1px solid var(--border);
-      background: var(--bg-hover);
-      color: var(--text-main);
-      border-radius: 8px;
-      padding: 0.6rem 0.9rem;
-      cursor: pointer;
-      font-size: 0.9rem;
-      white-space: nowrap;
-    }
-
-    #castButton:hover {
-      border-color: var(--primary);
     }
 
     @media (max-width: 768px) {
@@ -221,7 +200,7 @@
   <div class="container">
     <aside class="sidebar">
       <ul class="channel-list" id="channelList">
-        <li class="placeholder">Cargando lista de canales...</li>
+        <li class="placeholder">Cargando listas de canales...</li>
       </ul>
     </aside>
 
@@ -231,53 +210,44 @@
       </div>
       <div class="stream-info">
         <h2 id="currentChannelName">Ningún canal seleccionado</h2>
-        <button id="castButton" type="button" onclick="toggleCast()">📺 Transmitir</button>
       </div>
     </main>
   </div>
 
   <script>
-    const M3U_URLS = [
+    // Lista de fuentes M3U/M3U8
+    const M3U_SOURCES = [
       'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ar.m3u',
       'http://200.62.239.170:830/playlist.m3u8'
     ];
 
-    const EXTRA_CHANNELS = [{ name: 'ESPN Premium Argentina', logo: '', url: 'http://200.62.239.170:830/play/a00p/index.m3u8' }];
-
     let channels = [];
     let hlsInstance = null;
-    let currentChannel = null;
-    let castSession = null;
-    let castAvailable = false;
 
     async function loadM3UPlaylist() {
-      try {
-        const results = await Promise.allSettled(
-          M3U_URLS.map(async (url) => {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return parseM3U(await response.text());
-          })
-        );
-
-        const loaded = results
-          .filter(result => result.status === 'fulfilled')
-          .flatMap(result => result.value);
-
-        channels = deduplicateChannels([...loaded, ...EXTRA_CHANNELS]);
-        renderChannels();
-
-        if (!channels.length) {
-          throw new Error('No se pudo cargar ninguna lista');
+      channels = [];
+      
+      for (const url of M3U_SOURCES) {
+        try {
+          const response = await fetch(url);
+          if (response.ok) {
+            const text = await response.text();
+            parseM3U(text);
+          }
+        } catch (error) {
+          console.warn('No se pudo cargar la fuente:', url, error);
         }
-      } catch (error) {
-        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al obtener la lista de canales.</li>';
+      }
+
+      if (channels.length > 0) {
+        renderChannels();
+      } else {
+        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al obtener los canales de las listas.</li>';
       }
     }
 
     function parseM3U(data) {
-      const parsed = [];
-      const lines = data.split(/\r?\n/);
+      const lines = data.split('\n');
       let currentChannel = {};
 
       lines.forEach(line => {
@@ -286,28 +256,16 @@
           const commaIndex = line.indexOf(',');
           const name = commaIndex !== -1 ? line.substring(commaIndex + 1).trim() : 'Canal sin nombre';
           const logoMatch = line.match(/tvg-logo="([^"]+)"/);
-          const groupMatch = line.match(/group-title="([^"]+)"/);
           const logo = logoMatch ? logoMatch[1] : '';
-          const group = groupMatch ? groupMatch[1] : '';
-          currentChannel = { name, logo, group };
-        } else if (line && !line.startsWith('#')) {
-          if (/^https?:\/\//i.test(line) && currentChannel.name) {
+
+          currentChannel = { name, logo };
+        } else if (line.startsWith('http')) {
+          if (currentChannel.name) {
             currentChannel.url = line;
-            parsed.push(currentChannel);
+            channels.push(currentChannel);
             currentChannel = {};
           }
         }
-      });
-      return parsed;
-    }
-
-    function deduplicateChannels(list) {
-      const seen = new Set();
-      return list.filter(channel => {
-        const key = `${channel.name.toLowerCase()}|${channel.url}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
       });
     }
 
@@ -342,7 +300,6 @@
     }
 
     function playChannel(channel, element) {
-      currentChannel = channel;
       document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
       if (element) element.classList.add('active');
 
@@ -377,61 +334,6 @@
         video.play();
       }
     }
-
-    function initCast() {
-      if (!window.cast || !window.cast.framework) return;
-
-      const context = cast.framework.CastContext.getInstance();
-      context.setOptions({
-        receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-        autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
-      });
-
-      castAvailable = true;
-      const button = document.getElementById('castButton');
-      button.style.display = 'inline-block';
-
-      context.addEventListener(
-        cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
-        event => {
-          castSession = context.getCurrentSession();
-          button.textContent = castSession ? '⏹️ Detener transmisión' : '📺 Transmitir';
-        }
-      );
-    }
-
-    function toggleCast() {
-      if (!castAvailable) return;
-      const context = cast.framework.CastContext.getInstance();
-      if (context.getCurrentSession()) {
-        context.endCurrentSession(true);
-        return;
-      }
-      context.requestSession().then(() => {
-        castSession = context.getCurrentSession();
-        if (currentChannel) sendChannelToCast(currentChannel);
-      }).catch(() => {});
-    }
-
-    function sendChannelToCast(channel) {
-      if (!castSession || !channel) return;
-
-      const mediaInfo = new chrome.cast.media.MediaInfo(channel.url, 'application/x-mpegURL');
-      mediaInfo.streamType = chrome.cast.media.StreamType.LIVE;
-      mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
-      mediaInfo.metadata.title = channel.name;
-      if (channel.logo) mediaInfo.metadata.images = [{ url: channel.logo }];
-
-      const request = new chrome.cast.media.LoadRequest(mediaInfo);
-      request.autoplay = true;
-      castSession.loadMedia(request).catch(() => {});
-    }
-
-    window['__onGCastApiAvailable'] = function(isAvailable) {
-      if (isAvailable) initCast();
-    };
-
-    window.addEventListener('load', () => setTimeout(initCast, 1000));
 
     loadM3UPlaylist();
   </script>
