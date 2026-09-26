@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Argentina TV</title>
-  <!-- HLS.js para reproducción de streams .m3u8 en navegadores que no lo soportan nativamente -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     :root {
@@ -80,7 +79,7 @@
     }
 
     .sidebar {
-      width: 320px;
+      width: 340px;
       background-color: var(--bg-card);
       border-right: 1px solid var(--border);
       display: flex;
@@ -94,13 +93,13 @@
 
     .filter-btn {
       flex: 1;
-      padding: 0.75rem;
+      padding: 0.75rem 0.5rem;
       background: none;
       border: none;
       color: var(--text-muted);
       cursor: pointer;
       font-weight: 600;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       border-bottom: 2px solid transparent;
     }
 
@@ -130,16 +129,21 @@
     }
 
     .channel-name {
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 230px;
     }
 
     .channel-badge {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       padding: 0.2rem 0.4rem;
       border-radius: 4rem;
       background-color: var(--bg-dark);
       color: var(--text-muted);
+      font-weight: bold;
     }
 
     .main-content {
@@ -187,7 +191,7 @@
         height: 400px;
       }
       .player-container {
-        height: 56.25vw; /* Ratio 16:9 */
+        height: 56.25vw;
         flex: none;
       }
     }
@@ -216,9 +220,9 @@
 
     <main class="main-content">
       <div class="player-container" id="playerContainer">
-        <div class="placeholder">Seleccioná un canal de la lista para empezar a transmitir.</div>
+        <div class="placeholder">Seleccioná un canal de la lista para empezar a ver.</div>
       </div>
-      <div class="stream-info" id="streamInfo">
+      <div class="stream-info">
         <h2 id="currentChannelName">Ningún canal seleccionado</h2>
       </div>
     </main>
@@ -237,13 +241,14 @@
         parseMarkdownList(text);
         renderChannels();
       } catch (error) {
-        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al cargar la lista. Verificá tu conexión.</li>';
+        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al cargar los canales.</li>';
       }
     }
 
     function parseMarkdownList(text) {
+      channels = [];
       const lines = text.split('\n');
-      let currentGroup = 'NACIONALES';
+      let currentGroup = 'TDA';
 
       lines.forEach(line => {
         if (line.includes('Buenos Aires')) {
@@ -252,20 +257,27 @@
           currentGroup = 'TDA';
         }
 
-        // Expresión regular para detectar links formateados en Markdown: [Nombre](URL)
-        const match = line.match(/\[(.*?)\]\((.*?)\)/);
-        if (match) {
-          const name = match[1].trim();
-          const url = match[2].trim();
-          
-          if (url.startsWith('http')) {
-            channels.push({
-              name: name,
-              url: url,
-              group: currentGroup,
-              isYouTube: url.includes('youtube.com') || url.includes('youtu.be')
-            });
-          }
+        // Parsear tanto tags HTML <a href="...">Nombre</a> como Markdown [Nombre](URL)
+        let name = '', url = '';
+
+        const htmlMatch = line.match(/<a\s+href=["']([^"']+)["'][^>]*>(.*?)<\/a>/i);
+        const mdMatch = line.match(/\[(.*?)\]\((.*?)\)/);
+
+        if (htmlMatch) {
+          url = htmlMatch[1].trim();
+          name = htmlMatch[2].replace(/<[^>]*>/g, '').trim(); // Limpiar tags anidados
+        } else if (mdMatch) {
+          name = mdMatch[1].trim();
+          url = mdMatch[2].trim();
+        }
+
+        if (name && url && url.startsWith('http')) {
+          channels.push({
+            name: name,
+            url: url,
+            group: currentGroup,
+            isYouTube: url.includes('youtube.com') || url.includes('youtu.be')
+          });
         }
       });
     }
@@ -323,23 +335,29 @@
       }
 
       if (channel.isYouTube) {
-        // Formatear enlace para reproductor de YouTube Embed
-        let videoId = '';
-        if (channel.url.includes('v=')) {
-          videoId = channel.url.split('v=')[1].split('&')[0];
+        let embedUrl = '';
+
+        if (channel.url.includes('/live/')) {
+          const liveId = channel.url.split('/live/')[1].split('?')[0];
+          embedUrl = `https://www.youtube.com/embed/${liveId}?autoplay=1`;
+        } else if (channel.url.includes('v=')) {
+          const videoId = channel.url.split('v=')[1].split('&')[0];
+          embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
         } else if (channel.url.includes('youtu.be/')) {
-          videoId = channel.url.split('youtu.be/')[1].split('?')[0];
-        } else if (channel.url.includes('/live/')) {
-          videoId = channel.url.split('/live/')[1].split('?')[0];
+          const videoId = channel.url.split('youtu.be/')[1].split('?')[0];
+          embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+        } else if (channel.url.includes('@')) {
+          // Canales de YT formateados con handle (@canal/live)
+          const handle = channel.url.split('youtube.com/')[1];
+          embedUrl = `https://www.youtube.com/embed?listType=user_uploads&list=${handle}`;
         }
 
-        if (videoId) {
-          container.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+        if (embedUrl) {
+          container.innerHTML = `<iframe src="${embedUrl}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
         } else {
-          window.open(channel.url, '_blank');
+          container.innerHTML = `<div class="placeholder"><p>Este stream requiere abrirse directamente en YouTube:</p><br><a href="${channel.url}" target="_blank" style="color:var(--primary)">Abrir ${channel.name} en YouTube</a></div>`;
         }
       } else {
-        // Reproducción de streaming directo (HLS / m3u8)
         const video = document.createElement('video');
         video.controls = true;
         video.autoplay = true;
@@ -351,16 +369,14 @@
           hlsInstance.attachMedia(video);
           hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play());
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-          // Soporte nativo de HLS (ej. Safari / iOS)
           video.src = channel.url;
           video.play();
         } else {
-          container.innerHTML = '<div class="placeholder">Este formato de video no es compatible con tu navegador.</div>';
+          container.innerHTML = '<div class="placeholder">Formato de video no compatible con este navegador.</div>';
         }
       }
     }
 
-    // Inicializar al cargar la página
     loadChannels();
   </script>
 </body>
