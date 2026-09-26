@@ -26,9 +26,10 @@
     body {
       background-color: var(--bg-dark);
       color: var(--text-main);
-      min-height: 100vh;
+      height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
 
     header {
@@ -40,9 +41,8 @@
       align-items: center;
       flex-wrap: wrap;
       gap: 1rem;
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      height: 70px;
+      flex-shrink: 0;
     }
 
     .logo {
@@ -84,7 +84,6 @@
       display: flex;
       flex-direction: column;
       height: 100%;
-      overflow: hidden;
     }
 
     .channel-list {
@@ -129,8 +128,7 @@
       flex-direction: column;
       background-color: #000;
       height: 100%;
-      position: sticky;
-      top: 70px;
+      position: relative;
     }
 
     .player-container {
@@ -139,6 +137,7 @@
       align-items: center;
       justify-content: center;
       background-color: #000;
+      overflow: hidden;
     }
 
     video {
@@ -158,24 +157,14 @@
       background-color: var(--bg-card);
       padding: 1rem 1.5rem;
       border-top: 1px solid var(--border);
+      flex-shrink: 0;
     }
 
     @media (max-width: 768px) {
-      .container { 
-        flex-direction: column; 
-        height: auto; 
-        overflow: visible;
-      }
-      .main-content {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        height: 56.25vw;
-      }
-      .sidebar { 
-        width: 100%; 
-        height: calc(100vh - 56.25vw); 
-      }
+      body { overflow: auto; }
+      .container { flex-direction: column-reverse; height: auto; overflow: visible; }
+      .sidebar { width: 100%; height: 50vh; }
+      .main-content { height: 50vh; position: sticky; top: 0; z-index: 10; }
     }
   </style>
 </head>
@@ -191,7 +180,7 @@
   <div class="container">
     <aside class="sidebar">
       <ul class="channel-list" id="channelList">
-        <li class="placeholder">Verificando canales disponibles...</li>
+        <li class="placeholder">Cargando lista de canales...</li>
       </ul>
     </aside>
 
@@ -209,25 +198,22 @@
     const M3U_URL = 'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ar.m3u';
 
     let channels = [];
-    let activeChannels = [];
     let hlsInstance = null;
 
     async function loadM3UPlaylist() {
       try {
         const response = await fetch(M3U_URL);
-        if (!response.ok) throw new Error('Error de red');
+        if (!response.ok) throw new Error('Error al descargar');
         const text = await response.text();
-        const parsed = parseM3U(text);
-        
-        // Verificar cuáles funcionan en segundo plano
-        validateAndRenderChannels(parsed);
+        parseM3U(text);
+        renderChannels();
       } catch (error) {
         document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al obtener la lista de canales.</li>';
       }
     }
 
     function parseM3U(data) {
-      const list = [];
+      channels = [];
       const lines = data.split('\n');
       let currentChannel = {};
 
@@ -243,49 +229,11 @@
         } else if (line.startsWith('http')) {
           if (currentChannel.name) {
             currentChannel.url = line;
-            list.push(currentChannel);
+            channels.push(currentChannel);
             currentChannel = {};
           }
         }
       });
-      return list;
-    }
-
-    // Comprueba disponibilidad del stream antes de mantenerlo en la lista
-    async function checkStream(url) {
-      try {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), 3500);
-        const res = await fetch(url, { method: 'HEAD', signal: controller.signal });
-        clearTimeout(id);
-        return res.ok;
-      } catch {
-        return false;
-      }
-    }
-
-    async function validateAndRenderChannels(parsedList) {
-      activeChannels = [];
-      
-      // Primera pasada renderizada para respuesta rápida
-      channels = parsedList;
-      renderChannels();
-
-      // Validación paralela
-      const checks = parsedList.map(async (channel) => {
-        const isValid = await checkStream(channel.url);
-        if (isValid) {
-          activeChannels.push(channel);
-        }
-      });
-
-      await Promise.all(checks);
-      
-      // Si la verificación estricta filtró canales válidos, actualiza la lista con solo los operativos
-      if (activeChannels.length > 0) {
-        channels = activeChannels;
-      }
-      renderChannels();
     }
 
     function renderChannels() {
@@ -296,7 +244,7 @@
       const filtered = channels.filter(channel => channel.name.toLowerCase().includes(searchTerm));
 
       if (filtered.length === 0) {
-        listElement.innerHTML = '<li class="placeholder">No se encontraron canales disponibles.</li>';
+        listElement.innerHTML = '<li class="placeholder">No hay canales disponibles.</li>';
         return;
       }
 
@@ -343,17 +291,15 @@
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play());
         hlsInstance.on(Hls.Events.ERROR, (event, data) => {
           if (data.fatal) {
-            // Remueve el canal si falla al intentar reproducirse
+            // Si falla la transmisión, borra el canal de la lista y limpia la pantalla
             channels = channels.filter(c => c.url !== channel.url);
             renderChannels();
-            container.innerHTML = '<div class="placeholder">Canal no disponible temporalmente.</div>';
+            container.innerHTML = '<div class="placeholder">Seleccioná un canal para reproducir.</div>';
           }
         });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = channel.url;
         video.play();
-      } else {
-        container.innerHTML = '<div class="placeholder">Tu navegador no soporta reproducción HLS.</div>';
       }
     }
 
