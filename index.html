@@ -3,74 +3,425 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>IPTV Player Bypass</title>
+  <title>Argentina TV</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
   <style>
     :root {
       --bg-dark: #0f172a;
       --bg-card: #1e293b;
-      --primary: #f97316;
+      --bg-hover: #334155;
+      --primary: #38bdf8;
       --text-main: #f8fafc;
+      --text-muted: #94a3b8;
       --border: #334155;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-    body { background: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; height: 100vh; }
-    header { background: var(--bg-card); padding: 1rem; border-bottom: 1px solid var(--border); display: flex; gap: 0.5rem; }
-    input { flex: 1; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-dark); color: #fff; }
-    button { background: var(--primary); color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: bold; }
-    .player-container { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; }
-    video { width: 100%; height: 100%; object-fit: contain; }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background-color: var(--bg-card);
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      height: 70px;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      font-size: 1.25rem;
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    .search-box {
+      flex: 1;
+      max-width: 400px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      outline: none;
+    }
+
+    .search-box input:focus {
+      border-color: var(--primary);
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+      height: calc(100vh - 70px);
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 340px;
+      background-color: var(--bg-card);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      flex-shrink: 0;
+    }
+
+    .channel-list {
+      flex: 1;
+      overflow-y: auto;
+      list-style: none;
+    }
+
+    .channel-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    .channel-list::-webkit-scrollbar-track {
+      background: var(--bg-card);
+    }
+    .channel-list::-webkit-scrollbar-thumb {
+      background: var(--bg-hover);
+      border-radius: 3px;
+    }
+    .channel-list::-webkit-scrollbar-thumb:hover {
+      background: var(--primary);
+    }
+
+    .channel-item {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transition: background 0.2s;
+    }
+
+    .channel-item:hover, .channel-item.active {
+      background-color: var(--bg-hover);
+    }
+
+    .channel-logo {
+      width: 30px;
+      height: 30px;
+      object-fit: contain;
+      border-radius: 4px;
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .channel-name {
+      font-size: 0.9rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: #000;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .player-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #000;
+      overflow: hidden;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .placeholder {
+      color: var(--text-muted);
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .stream-info {
+      background-color: var(--bg-card);
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    #castButton {
+      display: none;
+      border: 1px solid var(--border);
+      background: var(--bg-hover);
+      color: var(--text-main);
+      border-radius: 8px;
+      padding: 0.6rem 0.9rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+
+    #castButton:hover {
+      border-color: var(--primary);
+    }
+
+    @media (max-width: 768px) {
+      html, body { overflow: auto; }
+      .container { flex-direction: column-reverse; height: auto; overflow: visible; }
+      .sidebar { width: 100%; height: 50vh; }
+      .main-content { height: 50vh; position: sticky; top: 0; z-index: 10; }
+    }
   </style>
 </head>
 <body>
 
   <header>
-    <input type="text" id="streamUrl" placeholder="Ej: http://200.62.239.170:830/play/a00p/index.m3u8">
-    <button onclick="playStream()">▶ Reproducir</button>
+    <div class="logo">🇦🇷 Argentina TV</div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Buscar canal..." oninput="filterChannels()">
+    </div>
   </header>
 
-  <div class="player-container" id="playerContainer">
-    <p style="color: #94a3b8;">Pega el enlace del canal arriba para iniciar la transmisión.</p>
+  <div class="container">
+    <aside class="sidebar">
+      <ul class="channel-list" id="channelList">
+        <li class="placeholder">Cargando lista de canales...</li>
+      </ul>
+    </aside>
+
+    <main class="main-content">
+      <div class="player-container" id="playerContainer">
+        <div class="placeholder">Seleccioná un canal para reproducir.</div>
+      </div>
+      <div class="stream-info">
+        <h2 id="currentChannelName">Ningún canal seleccionado</h2>
+        <button id="castButton" type="button" onclick="toggleCast()">📺 Transmitir</button>
+      </div>
+    </main>
   </div>
 
   <script>
-    const PROXY = 'https://corsproxy.io/?';
+    // CAMBIA ESTA URL POR LA DIRECCIÓN DE TU WORKER DE CLOUDFLARE:
+    const CORS_PROXY = 'https://argentinatv.tu-usuario.workers.dev/?url=';
+
+    const PLAYLIST_URL = 'http://200.62.239.170:830/playlist.m3u8';
+    const BASE_URL = 'http://200.62.239.170:830/';
+
+    let channels = [];
     let hlsInstance = null;
+    let currentChannel = null;
+    let castSession = null;
+    let castAvailable = false;
 
-    function playStream() {
-      const input = document.getElementById('streamUrl').value.trim();
-      if (!input) return;
+    async function loadM3UPlaylist() {
+      try {
+        const fetchUrl = CORS_PROXY + encodeURIComponent(PLAYLIST_URL);
+        const response = await fetch(fetchUrl);
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const text = await response.text();
+        channels = parseM3U(text, BASE_URL);
+        renderChannels();
 
+        if (!channels.length) {
+          throw new Error('No se encontraron canales');
+        }
+      } catch (error) {
+        console.error(error);
+        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al obtener la lista de canales.</li>';
+      }
+    }
+
+    function parseM3U(data, baseUrl) {
+      const parsed = [];
+      const lines = data.split(/\r?\n/);
+      let currentChannel = {};
+
+      lines.forEach(line => {
+        line = line.trim();
+        if (line.startsWith('#EXTINF:')) {
+          const commaIndex = line.indexOf(',');
+          const name = commaIndex !== -1 ? line.substring(commaIndex + 1).trim() : 'Canal sin nombre';
+          const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+          const logo = logoMatch ? logoMatch[1] : '';
+          currentChannel = { name, logo };
+        } else if (line && !line.startsWith('#')) {
+          let streamUrl = line;
+          if (!/^https?:\/\//i.test(streamUrl)) {
+            streamUrl = new URL(streamUrl, baseUrl).href;
+          }
+          if (currentChannel.name) {
+            currentChannel.url = streamUrl;
+            parsed.push(currentChannel);
+            currentChannel = {};
+          }
+        }
+      });
+      return parsed;
+    }
+
+    function renderChannels() {
+      const listElement = document.getElementById('channelList');
+      const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+      listElement.innerHTML = '';
+
+      const filtered = channels.filter(channel => channel.name.toLowerCase().includes(searchTerm));
+
+      if (filtered.length === 0) {
+        listElement.innerHTML = '<li class="placeholder">No hay canales disponibles.</li>';
+        return;
+      }
+
+      filtered.forEach(channel => {
+        const li = document.createElement('li');
+        li.className = 'channel-item';
+        
+        const logoHtml = channel.logo 
+          ? `<img class="channel-logo" src="${channel.logo}" alt="" onerror="this.style.display='none'">` 
+          : `<span style="font-size: 1.2rem;">📺</span>`;
+
+        li.innerHTML = `${logoHtml}<span class="channel-name">${channel.name}</span>`;
+        li.onclick = () => playChannel(channel, li);
+        listElement.appendChild(li);
+      });
+    }
+
+    function filterChannels() {
+      renderChannels();
+    }
+
+    function playChannel(channel, element) {
+      currentChannel = channel;
+      document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
+      if (element) element.classList.add('active');
+
+      document.getElementById('currentChannelName').textContent = channel.name;
       const container = document.getElementById('playerContainer');
       container.innerHTML = '';
 
-      if (hlsInstance) hlsInstance.destroy();
+      if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
 
       const video = document.createElement('video');
       video.controls = true;
       video.autoplay = true;
       container.appendChild(video);
 
-      // Si la URL es HTTP, la enviamos a través del proxy CORS
-      const targetUrl = input.startsWith('http://') ? PROXY + encodeURIComponent(input) : input;
+      const playableUrl = CORS_PROXY + encodeURIComponent(channel.url);
 
       if (Hls.isSupported()) {
         hlsInstance = new Hls({
           xhrSetup: function(xhr, url) {
-            // Reenruta sub-peticiones de manifiestos y fragmentos .ts si son HTTP
-            if (url.startsWith('http://')) {
-              xhr.open('GET', PROXY + encodeURIComponent(url), true);
+            // Pasa todas las sub-peticiones de fragmentos .ts por tu Worker
+            if (!url.startsWith(CORS_PROXY)) {
+              xhr.open('GET', CORS_PROXY + encodeURIComponent(url), true);
             }
           }
         });
-        hlsInstance.loadSource(targetUrl);
+        hlsInstance.loadSource(playableUrl);
         hlsInstance.attachMedia(video);
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play());
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = targetUrl;
+        video.src = playableUrl;
         video.play();
       }
     }
+
+    function initCast() {
+      if (!window.cast || !window.cast.framework) return;
+
+      const context = cast.framework.CastContext.getInstance();
+      context.setOptions({
+        receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
+        autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
+      });
+
+      castAvailable = true;
+      const button = document.getElementById('castButton');
+      button.style.display = 'inline-block';
+
+      context.addEventListener(
+        cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
+        event => {
+          castSession = context.getCurrentSession();
+          button.textContent = castSession ? '⏹️ Detener transmisión' : '📺 Transmitir';
+        }
+      );
+    }
+
+    function toggleCast() {
+      if (!castAvailable) return;
+      const context = cast.framework.CastContext.getInstance();
+      if (context.getCurrentSession()) {
+        context.endCurrentSession(true);
+        return;
+      }
+      context.requestSession().then(() => {
+        castSession = context.getCurrentSession();
+        if (currentChannel) sendChannelToCast(currentChannel);
+      }).catch(() => {});
+    }
+
+    function sendChannelToCast(channel) {
+      if (!castSession || !channel) return;
+
+      const castUrl = CORS_PROXY + encodeURIComponent(channel.url);
+
+      const mediaInfo = new chrome.cast.media.MediaInfo(castUrl, 'application/x-mpegURL');
+      mediaInfo.streamType = chrome.cast.media.StreamType.LIVE;
+      mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
+      mediaInfo.metadata.title = channel.name;
+      if (channel.logo) mediaInfo.metadata.images = [{ url: channel.logo }];
+
+      const request = new chrome.cast.media.LoadRequest(mediaInfo);
+      request.autoplay = true;
+      castSession.loadMedia(request).catch(() => {});
+    }
+
+    window['__onGCastApiAvailable'] = function(isAvailable) {
+      if (isAvailable) initCast();
+    };
+
+    window.addEventListener('load', () => setTimeout(initCast, 1000));
+
+    loadM3UPlaylist();
   </script>
 </body>
 </html>
