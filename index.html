@@ -173,7 +173,7 @@
 <body>
 
   <header>
-    <div class="logo">🇦🇷 Argentina TV (iptv-org)</div>
+    <div class="logo">🇦🇷 Argentina TV</div>
     <div class="search-box">
       <input type="text" id="searchInput" placeholder="Buscar canal..." oninput="filterChannels()">
     </div>
@@ -182,7 +182,7 @@
   <div class="container">
     <aside class="sidebar">
       <ul class="channel-list" id="channelList">
-        <li class="placeholder">Cargando canales desde iptv-org...</li>
+        <li class="placeholder">Cargando canales...</li>
       </ul>
     </aside>
 
@@ -197,20 +197,20 @@
   </div>
 
   <script>
-    // Enlace Raw directo de la lista M3U de Argentina de iptv-org
-    const M3U_URL = 'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ar.m3u';
+    const M3U_URL = 'https://iptv-org.github.io/iptv/countries/ar.m3u8';
 
     let channels = [];
     let hlsInstance = null;
 
     async function loadM3UPlaylist() {
       try {
-        const response = await fetch(M3U8_URL);
+        const response = await fetch(M3U_URL);
+        if (!response.ok) throw new Error('Error al conectar');
         const text = await response.text();
         parseM3U(text);
         renderChannels();
       } catch (error) {
-        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al obtener la lista de iptv-org.</li>';
+        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al obtener la lista de canales.</li>';
       }
     }
 
@@ -222,11 +222,9 @@
       lines.forEach(line => {
         line = line.trim();
         if (line.startsWith('#EXTINF:')) {
-          // Extraer nombre del canal
           const commaIndex = line.indexOf(',');
           const name = commaIndex !== -1 ? line.substring(commaIndex + 1).trim() : 'Canal sin nombre';
           
-          // Extraer logo si existe (tvg-logo)
           const logoMatch = line.match(/tvg-logo="([^"]+)"/);
           const logo = logoMatch ? logoMatch[1] : '';
 
@@ -313,8 +311,6 @@
       }
     }
 
-    // Usamos el enlace raw del repo de GitHub
-    const M3U8_URL = 'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ar.m3u';
     loadM3UPlaylist();
   </script>
 </body>
