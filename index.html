@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>IPTV Player</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
-  <script src="https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1"></script>
   <style>
     :root {
       --bg-dark: #0f172a;
@@ -21,7 +20,7 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
     html, body {
@@ -55,9 +54,15 @@
       color: var(--primary);
     }
 
+    .controls {
+      display: flex;
+      gap: 0.5rem;
+      flex: 1;
+      max-width: 600px;
+    }
+
     .search-box {
       flex: 1;
-      max-width: 400px;
     }
 
     .search-box input {
@@ -70,8 +75,15 @@
       outline: none;
     }
 
-    .search-box input:focus {
-      border-color: var(--primary);
+    .file-input-btn {
+      background: var(--bg-hover);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      white-space: nowrap;
     }
 
     .container {
@@ -97,20 +109,6 @@
       list-style: none;
     }
 
-    .channel-list::-webkit-scrollbar {
-      width: 6px;
-    }
-    .channel-list::-webkit-scrollbar-track {
-      background: var(--bg-card);
-    }
-    .channel-list::-webkit-scrollbar-thumb {
-      background: var(--bg-hover);
-      border-radius: 3px;
-    }
-    .channel-list::-webkit-scrollbar-thumb:hover {
-      background: var(--primary);
-    }
-
     .channel-item {
       padding: 0.75rem 1rem;
       border-bottom: 1px solid var(--border);
@@ -123,14 +121,6 @@
 
     .channel-item:hover, .channel-item.active {
       background-color: var(--bg-hover);
-    }
-
-    .channel-logo {
-      width: 30px;
-      height: 30px;
-      object-fit: contain;
-      border-radius: 4px;
-      background-color: rgba(255, 255, 255, 0.05);
     }
 
     .channel-name {
@@ -177,26 +167,6 @@
       padding: 1rem 1.5rem;
       border-top: 1px solid var(--border);
       flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-    }
-
-    #castButton {
-      display: none;
-      border: 1px solid var(--border);
-      background: var(--bg-hover);
-      color: var(--text-main);
-      border-radius: 8px;
-      padding: 0.6rem 0.9rem;
-      cursor: pointer;
-      font-size: 0.9rem;
-      white-space: nowrap;
-    }
-
-    #castButton:hover {
-      border-color: var(--primary);
     }
 
     @media (max-width: 768px) {
@@ -210,16 +180,22 @@
 <body>
 
   <header>
-    <div class="logo">📺 Mi Lista IPTV</div>
-    <div class="search-box">
-      <input type="text" id="searchInput" placeholder="Buscar canal..." oninput="filterChannels()">
+    <div class="logo">📺 IPTV Player</div>
+    <div class="controls">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Buscar canal..." oninput="filterChannels()">
+      </div>
+      <label class="file-input-btn">
+        📁 Cargar .M3U8
+        <input type="file" id="fileInput" accept=".m3u,.m3u8" style="display:none" onchange="handleFileSelect(event)">
+      </label>
     </div>
   </header>
 
   <div class="container">
     <aside class="sidebar">
       <ul class="channel-list" id="channelList">
-        <li class="placeholder">Cargando lista de canales...</li>
+        <li class="placeholder">Intentando obtener lista remota...</li>
       </ul>
     </aside>
 
@@ -229,40 +205,55 @@
       </div>
       <div class="stream-info">
         <h2 id="currentChannelName">Ningún canal seleccionado</h2>
-        <button id="castButton" type="button" onclick="toggleCast()">📺 Transmitir</button>
       </div>
     </main>
   </div>
 
   <script>
-    const CORS_PROXY = 'https://corsproxy.io/?';
     const PLAYLIST_URL = 'http://200.62.239.170:830/playlist.m3u8';
     const BASE_URL = 'http://200.62.239.170:830/';
 
     let channels = [];
     let hlsInstance = null;
-    let currentChannel = null;
-    let castSession = null;
-    let castAvailable = false;
 
     async function loadM3UPlaylist() {
       try {
-        const fetchUrl = CORS_PROXY + encodeURIComponent(PLAYLIST_URL);
-        const response = await fetch(fetchUrl);
+        // Intento de descarga usando Proxy de formato JSON
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(PLAYLIST_URL)}`;
+        const response = await fetch(proxyUrl);
         
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
-        const text = await response.text();
-        channels = parseM3U(text, BASE_URL);
+        const data = await response.json();
+        if (!data.contents) throw new Error("No se pudo obtener el contenido");
+
+        channels = parseM3U(data.contents, BASE_URL);
         renderChannels();
 
         if (!channels.length) {
-          throw new Error('No se encontraron canales en la lista');
+          throw new Error('Lista vacía');
         }
       } catch (error) {
-        console.error(error);
-        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al cargar la lista de canales.</li>';
+        console.warn('Fallo la descarga remota:', error);
+        document.getElementById('channelList').innerHTML = `
+          <li class="placeholder">
+            No se pudo cargar la lista remota desde el servidor.<br><br>
+            <strong>Solución:</strong> Descarga el archivo <code>playlist.m3u8</code> en tu dispositivo y usa el botón <strong>"📁 Cargar .M3U8"</strong> arriba.
+          </li>`;
       }
+    }
+
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const content = e.target.result;
+        channels = parseM3U(content, BASE_URL);
+        renderChannels();
+      };
+      reader.readAsText(file);
     }
 
     function parseM3U(data, baseUrl) {
@@ -276,13 +267,10 @@
           const commaIndex = line.indexOf(',');
           const name = commaIndex !== -1 ? line.substring(commaIndex + 1).trim() : 'Canal sin nombre';
           const logoMatch = line.match(/tvg-logo="([^"]+)"/);
-          const groupMatch = line.match(/group-title="([^"]+)"/);
           const logo = logoMatch ? logoMatch[1] : '';
-          const group = groupMatch ? groupMatch[1] : '';
-          currentChannel = { name, logo, group };
+          currentChannel = { name, logo };
         } else if (line && !line.startsWith('#')) {
           let streamUrl = line;
-          // Si la URL es relativa, la convertimos en una URL completa apuntando al servidor
           if (!/^https?:\/\//i.test(streamUrl)) {
             streamUrl = new URL(streamUrl, baseUrl).href;
           }
@@ -313,7 +301,7 @@
         li.className = 'channel-item';
         
         const logoHtml = channel.logo 
-          ? `<img class="channel-logo" src="${channel.logo}" alt="" onerror="this.style.display='none'">` 
+          ? `<img class="channel-logo" src="${channel.logo}" alt="" width="24" height="24" onerror="this.style.display='none'">` 
           : `<span style="font-size: 1.2rem;">📺</span>`;
 
         li.innerHTML = `${logoHtml}<span class="channel-name">${channel.name}</span>`;
@@ -327,7 +315,6 @@
     }
 
     function playChannel(channel, element) {
-      currentChannel = channel;
       document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
       if (element) element.classList.add('active');
 
@@ -345,87 +332,16 @@
       video.autoplay = true;
       container.appendChild(video);
 
-      // Usamos el proxy para la reproducción si la transmisión no es HTTPS
-      let playableUrl = channel.url;
-      if (playableUrl.startsWith('http://')) {
-        playableUrl = CORS_PROXY + encodeURIComponent(playableUrl);
-      }
-
       if (Hls.isSupported()) {
         hlsInstance = new Hls();
-        hlsInstance.loadSource(playableUrl);
+        hlsInstance.loadSource(channel.url);
         hlsInstance.attachMedia(video);
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play());
-        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
-          if (data.fatal) {
-            container.innerHTML = '<div class="placeholder">Error al reproducir la transmisión.</div>';
-          }
-        });
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = playableUrl;
+        video.src = channel.url;
         video.play();
       }
     }
-
-    function initCast() {
-      if (!window.cast || !window.cast.framework) return;
-
-      const context = cast.framework.CastContext.getInstance();
-      context.setOptions({
-        receiverApplicationId: chrome.cast.media.DEFAULT_MEDIA_RECEIVER_APP_ID,
-        autoJoinPolicy: chrome.cast.AutoJoinPolicy.ORIGIN_SCOPED
-      });
-
-      castAvailable = true;
-      const button = document.getElementById('castButton');
-      button.style.display = 'inline-block';
-
-      context.addEventListener(
-        cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
-        event => {
-          castSession = context.getCurrentSession();
-          button.textContent = castSession ? '⏹️ Detener transmisión' : '📺 Transmitir';
-        }
-      );
-    }
-
-    function toggleCast() {
-      if (!castAvailable) return;
-      const context = cast.framework.CastContext.getInstance();
-      if (context.getCurrentSession()) {
-        context.endCurrentSession(true);
-        return;
-      }
-      context.requestSession().then(() => {
-        castSession = context.getCurrentSession();
-        if (currentChannel) sendChannelToCast(currentChannel);
-      }).catch(() => {});
-    }
-
-    function sendChannelToCast(channel) {
-      if (!castSession || !channel) return;
-
-      let castUrl = channel.url;
-      if (castUrl.startsWith('http://')) {
-        castUrl = CORS_PROXY + encodeURIComponent(castUrl);
-      }
-
-      const mediaInfo = new chrome.cast.media.MediaInfo(castUrl, 'application/x-mpegURL');
-      mediaInfo.streamType = chrome.cast.media.StreamType.LIVE;
-      mediaInfo.metadata = new chrome.cast.media.GenericMediaMetadata();
-      mediaInfo.metadata.title = channel.name;
-      if (channel.logo) mediaInfo.metadata.images = [{ url: channel.logo }];
-
-      const request = new chrome.cast.media.LoadRequest(mediaInfo);
-      request.autoplay = true;
-      castSession.loadMedia(request).catch(() => {});
-    }
-
-    window['__onGCastApiAvailable'] = function(isAvailable) {
-      if (isAvailable) initCast();
-    };
-
-    window.addEventListener('load', () => setTimeout(initCast, 1000));
 
     loadM3UPlaylist();
   </script>
