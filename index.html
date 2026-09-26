@@ -3,265 +3,73 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VLC Web Player</title>
+  <title>IPTV Player Bypass</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     :root {
       --bg-dark: #0f172a;
       --bg-card: #1e293b;
-      --bg-hover: #334155;
-      --primary: #f97316; /* Color naranja estilo VLC */
+      --primary: #f97316;
       --text-main: #f8fafc;
-      --text-muted: #94a3b8;
       --border: #334155;
     }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-
-    html, body {
-      height: 100%;
-      background-color: var(--bg-dark);
-      color: var(--text-main);
-      display: flex;
-      flex-direction: column;
-    }
-
-    header {
-      background-color: var(--bg-card);
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-
-    .logo {
-      font-size: 1.25rem;
-      font-weight: bold;
-      color: var(--primary);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .stream-input-container {
-      display: flex;
-      gap: 0.5rem;
-      flex: 1;
-      max-width: 650px;
-    }
-
-    .stream-input-container input {
-      flex: 1;
-      padding: 0.6rem 1rem;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background-color: var(--bg-dark);
-      color: var(--text-main);
-      outline: none;
-    }
-
-    .stream-input-container input:focus {
-      border-color: var(--primary);
-    }
-
-    .btn {
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      padding: 0.6rem 1.2rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-
-    .btn-secondary {
-      background: var(--bg-hover);
-      border: 1px solid var(--border);
-    }
-
-    .container {
-      display: flex;
-      flex: 1;
-      height: calc(100vh - 75px);
-      overflow: hidden;
-    }
-
-    .sidebar {
-      width: 320px;
-      background-color: var(--bg-card);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-    }
-
-    .channel-list {
-      flex: 1;
-      overflow-y: auto;
-      list-style: none;
-    }
-
-    .channel-item {
-      padding: 0.8rem 1rem;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .channel-item:hover, .channel-item.active {
-      background-color: var(--bg-hover);
-      color: var(--primary);
-    }
-
-    .main-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background-color: #000;
-    }
-
-    .player-container {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-
-    .placeholder {
-      color: var(--text-muted);
-      text-align: center;
-      padding: 2rem;
-    }
-
-    @media (max-width: 768px) {
-      .container { flex-direction: column-reverse; }
-      .sidebar { width: 100%; height: 40vh; }
-      .main-content { height: 60vh; }
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+    body { background: var(--bg-dark); color: var(--text-main); display: flex; flex-direction: column; height: 100vh; }
+    header { background: var(--bg-card); padding: 1rem; border-bottom: 1px solid var(--border); display: flex; gap: 0.5rem; }
+    input { flex: 1; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg-dark); color: #fff; }
+    button { background: var(--primary); color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    .player-container { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; }
+    video { width: 100%; height: 100%; object-fit: contain; }
   </style>
 </head>
 <body>
 
   <header>
-    <div class="logo">🟧 VLC Web Player</div>
-    
-    <div class="stream-input-container">
-      <input type="text" id="streamUrl" placeholder="Pega la URL del canal o .m3u8 directamente...">
-      <button class="btn" onclick="playDirectUrl()">▶ Reproducir</button>
-      <label class="btn btn-secondary">
-        📁 Archivo
-        <input type="file" id="fileInput" accept=".m3u,.m3u8" style="display:none" onchange="handleFile(event)">
-      </label>
-    </div>
+    <input type="text" id="streamUrl" placeholder="Ej: http://200.62.239.170:830/play/a00p/index.m3u8">
+    <button onclick="playStream()">▶ Reproducir</button>
   </header>
 
-  <div class="container">
-    <aside class="sidebar">
-      <ul class="channel-list" id="channelList">
-        <li class="placeholder">Pega un enlace arriba o carga tu archivo de canales.</li>
-      </ul>
-    </aside>
-
-    <main class="main-content">
-      <div class="player-container" id="playerContainer">
-        <div class="placeholder">Listo para reproducir contenido HLS / M3U8.</div>
-      </div>
-    </main>
+  <div class="player-container" id="playerContainer">
+    <p style="color: #94a3b8;">Pega el enlace del canal arriba para iniciar la transmisión.</p>
   </div>
 
   <script>
+    const PROXY = 'https://corsproxy.io/?';
     let hlsInstance = null;
 
-    function playStream(url, name = 'Canal en vivo') {
+    function playStream() {
+      const input = document.getElementById('streamUrl').value.trim();
+      if (!input) return;
+
       const container = document.getElementById('playerContainer');
       container.innerHTML = '';
 
-      if (hlsInstance) {
-        hlsInstance.destroy();
-      }
+      if (hlsInstance) hlsInstance.destroy();
 
       const video = document.createElement('video');
       video.controls = true;
       video.autoplay = true;
       container.appendChild(video);
 
+      // Si la URL es HTTP, la enviamos a través del proxy CORS
+      const targetUrl = input.startsWith('http://') ? PROXY + encodeURIComponent(input) : input;
+
       if (Hls.isSupported()) {
         hlsInstance = new Hls({
-          enableWorker: true,
-          lowLatencyMode: true
+          xhrSetup: function(xhr, url) {
+            // Reenruta sub-peticiones de manifiestos y fragmentos .ts si son HTTP
+            if (url.startsWith('http://')) {
+              xhr.open('GET', PROXY + encodeURIComponent(url), true);
+            }
+          }
         });
-        hlsInstance.loadSource(url);
+        hlsInstance.loadSource(targetUrl);
         hlsInstance.attachMedia(video);
         hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play());
       } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = url;
+        video.src = targetUrl;
         video.play();
       }
-    }
-
-    function playDirectUrl() {
-      const url = document.getElementById('streamUrl').value.trim();
-      if (url) {
-        playStream(url);
-      }
-    }
-
-    function handleFile(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        parseAndRenderM3U(e.target.result);
-      };
-      reader.readAsText(file);
-    }
-
-    function parseAndRenderM3U(content) {
-      const listElement = document.getElementById('channelList');
-      listElement.innerHTML = '';
-      
-      const lines = content.split(/\r?\n/);
-      let currentName = '';
-
-      lines.forEach(line => {
-        line = line.trim();
-        if (line.startsWith('#EXTINF:')) {
-          const commaIndex = line.indexOf(',');
-          currentName = commaIndex !== -1 ? line.substring(commaIndex + 1).trim() : 'Canal';
-        } else if (line && !line.startsWith('#')) {
-          const streamUrl = line;
-          const channelName = currentName || streamUrl;
-          
-          const li = document.createElement('li');
-          li.className = 'channel-item';
-          li.innerHTML = `📺 <span>${channelName}</span>`;
-          li.onclick = () => {
-            document.querySelectorAll('.channel-item').forEach(i => i.classList.remove('active'));
-            li.classList.add('active');
-            playStream(streamUrl, channelName);
-          };
-          
-          listElement.appendChild(li);
-          currentName = '';
-        }
-      });
     }
   </script>
 </body>
