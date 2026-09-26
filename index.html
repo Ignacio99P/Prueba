@@ -178,6 +178,19 @@
       background-color: var(--bg-card);
       padding: 1rem 1.5rem;
       border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .open-btn {
+      background-color: var(--primary);
+      color: #0f172a;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 0.85rem;
     }
 
     @media (max-width: 768px) {
@@ -210,12 +223,10 @@
     <aside class="sidebar">
       <div class="filter-tabs">
         <button class="filter-btn active" onclick="setCategory('ALL', this)">TODOS</button>
-        <button class="filter-btn" onclick="setCategory('TDA', this)">TDA / NACIONALES</button>
+        <button class="filter-btn" onclick="setCategory('TDA', this)">NACIONALES / TDA</button>
         <button class="filter-btn" onclick="setCategory('BSAS', this)">BUENOS AIRES</button>
       </div>
-      <ul class="channel-list" id="channelList">
-        <li class="placeholder">Cargando lista de canales...</li>
-      </ul>
+      <ul class="channel-list" id="channelList"></ul>
     </aside>
 
     <main class="main-content">
@@ -224,70 +235,46 @@
       </div>
       <div class="stream-info">
         <h2 id="currentChannelName">Ningún canal seleccionado</h2>
+        <a id="externalLink" href="#" target="_blank" class="open-btn" style="display:none;">Abrir en fuente externa ↗</a>
       </div>
     </main>
   </div>
 
   <script>
-    const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/ShareASmile/FREE-IPTV/master/lists/argentina.md';
-    let channels = [];
+    // Lista extraída directamente del repositorio
+    const rawChannels = [
+      // NACIONALES / TDA
+      { name: "TN Todo Noticias", url: "https://www.youtube.com/embed/live_stream?channel=UC2icp488Tzrt1UThR-8v07A", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/user/todonoticias" },
+      { name: "Encuentro", url: "https://www.youtube.com/embed/live_stream?channel=UC8V0O093YnK5Cq3uB-T30oQ", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/user/canalencuentro" },
+      { name: "Pakapaka", url: "https://www.youtube.com/embed/live_stream?channel=UCU9891EFLc9t-J1BgtM9a6A", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/user/CanalPakapaka" },
+      { name: "Televisión Pública", url: "https://www.youtube.com/embed/live_stream?channel=UC1vA9wP06LAt4v70T6cT4bQ", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/user/TVPublicaArgentina" },
+      { name: "Canal 26", url: "https://www.youtube.com/embed/live_stream?channel=UC8SAtxX6C-zV-SgDTh5Qxng", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/user/canal26" },
+      { name: "Crónica TV", url: "https://www.youtube.com/embed/live_stream?channel=UC4SjPmsM1L9A8f1aT1X2-fA", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/c/cronicatv" },
+      { name: "IP Noticias", url: "https://www.youtube.com/embed/live_stream?channel=UC3O30E78S0vE65R76B4M1bg", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/c/IPNoticias" },
+      { name: "El Destape", url: "https://www.youtube.com/embed/live_stream?channel=UCW8sIqE58-wO-RzF_w1z8gA", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/c/ElDestape" },
+      { name: "C5N", url: "https://www.youtube.com/embed/live_stream?channel=UC_1mI24zTq0E3V36mE75w6A", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/c/c5n" },
+      { name: "LN+", url: "https://www.youtube.com/embed/live_stream?channel=UCba3h_8-g-U8fL7N5wU7s8g", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/c/LaNacionPlus" },
+      { name: "Canal E", url: "https://www.youtube.com/embed/live_stream?channel=UC0O81B7tT4O_v9K4x7-X4-Q", group: "TDA", isYT: true, origUrl: "https://www.youtube.com/c/CanalE" },
+      
+      // BUENOS AIRES
+      { name: "Telefe", url: "https://www.youtube.com/embed/live_stream?channel=UC7w_yA2zX4s2vFjH9G67-fg", group: "BSAS", isYT: true, origUrl: "https://www.youtube.com/user/telefe" },
+      { name: "América TV", url: "https://www.youtube.com/embed/live_stream?channel=UCs3zX915R53f7c46aIeL2aA", group: "BSAS", isYT: true, origUrl: "https://www.youtube.com/user/americatv" },
+      { name: "A24", url: "https://www.youtube.com/embed/live_stream?channel=UC_7oM4L8K9S-5vYtI4Xv_Xg", group: "BSAS", isYT: true, origUrl: "https://www.youtube.com/user/a24com" },
+      { name: "Telemax", url: "https://stream.telecentro.com.ar/hls/telemax/index.m3u8", group: "BSAS", isYT: false, origUrl: "https://stream.telecentro.com.ar/hls/telemax/index.m3u8" },
+      { name: "Net TV", url: "https://www.canalnet.tv/vivo/", group: "BSAS", isYT: false, origUrl: "https://www.canalnet.tv/vivo/" },
+      { name: "El Trece", url: "https://www.eltrece.tv/vivo", group: "BSAS", isYT: false, origUrl: "https://www.eltrece.tv/vivo" },
+      { name: "El Nueve", url: "https://www.elnueve.com.ar/en-vivo", group: "BSAS", isYT: false, origUrl: "https://www.elnueve.com.ar/en-vivo" }
+    ];
+
     let currentCategory = 'ALL';
     let hlsInstance = null;
-
-    async function loadChannels() {
-      try {
-        const response = await fetch(GITHUB_RAW_URL);
-        const text = await response.text();
-        parseMarkdownList(text);
-        renderChannels();
-      } catch (error) {
-        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al cargar los canales.</li>';
-      }
-    }
-
-    function parseMarkdownList(text) {
-      channels = [];
-      const lines = text.split('\n');
-      let currentGroup = 'TDA';
-
-      lines.forEach(line => {
-        if (line.includes('Buenos Aires')) {
-          currentGroup = 'BSAS';
-        } else if (line.includes('TDA') || line.includes('Nacionales')) {
-          currentGroup = 'TDA';
-        }
-
-        // Parsear tanto tags HTML <a href="...">Nombre</a> como Markdown [Nombre](URL)
-        let name = '', url = '';
-
-        const htmlMatch = line.match(/<a\s+href=["']([^"']+)["'][^>]*>(.*?)<\/a>/i);
-        const mdMatch = line.match(/\[(.*?)\]\((.*?)\)/);
-
-        if (htmlMatch) {
-          url = htmlMatch[1].trim();
-          name = htmlMatch[2].replace(/<[^>]*>/g, '').trim(); // Limpiar tags anidados
-        } else if (mdMatch) {
-          name = mdMatch[1].trim();
-          url = mdMatch[2].trim();
-        }
-
-        if (name && url && url.startsWith('http')) {
-          channels.push({
-            name: name,
-            url: url,
-            group: currentGroup,
-            isYouTube: url.includes('youtube.com') || url.includes('youtu.be')
-          });
-        }
-      });
-    }
 
     function renderChannels() {
       const listElement = document.getElementById('channelList');
       const searchTerm = document.getElementById('searchInput').value.toLowerCase();
       listElement.innerHTML = '';
 
-      const filtered = channels.filter(channel => {
+      const filtered = rawChannels.filter(channel => {
         const matchesCategory = currentCategory === 'ALL' || channel.group === currentCategory;
         const matchesSearch = channel.name.toLowerCase().includes(searchTerm);
         return matchesCategory && matchesSearch;
@@ -301,10 +288,8 @@
       filtered.forEach(channel => {
         const li = document.createElement('li');
         li.className = 'channel-item';
-        
-        const isYT = channel.isYouTube ? ' <span class="channel-badge">YT</span>' : '';
-        li.innerHTML = `<span class="channel-name">📺 ${channel.name}</span>${isYT}`;
-        
+        const badge = channel.isYT ? '<span class="channel-badge">YT</span>' : '';
+        li.innerHTML = `<span class="channel-name">📺 ${channel.name}</span>${badge}`;
         li.onclick = () => playChannel(channel, li);
         listElement.appendChild(li);
       });
@@ -326,6 +311,10 @@
       if (element) element.classList.add('active');
 
       document.getElementById('currentChannelName').textContent = channel.name;
+      const externalBtn = document.getElementById('externalLink');
+      externalBtn.style.display = 'inline-block';
+      externalBtn.href = channel.origUrl;
+
       const container = document.getElementById('playerContainer');
       container.innerHTML = '';
 
@@ -334,30 +323,9 @@
         hlsInstance = null;
       }
 
-      if (channel.isYouTube) {
-        let embedUrl = '';
-
-        if (channel.url.includes('/live/')) {
-          const liveId = channel.url.split('/live/')[1].split('?')[0];
-          embedUrl = `https://www.youtube.com/embed/${liveId}?autoplay=1`;
-        } else if (channel.url.includes('v=')) {
-          const videoId = channel.url.split('v=')[1].split('&')[0];
-          embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-        } else if (channel.url.includes('youtu.be/')) {
-          const videoId = channel.url.split('youtu.be/')[1].split('?')[0];
-          embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
-        } else if (channel.url.includes('@')) {
-          // Canales de YT formateados con handle (@canal/live)
-          const handle = channel.url.split('youtube.com/')[1];
-          embedUrl = `https://www.youtube.com/embed?listType=user_uploads&list=${handle}`;
-        }
-
-        if (embedUrl) {
-          container.innerHTML = `<iframe src="${embedUrl}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
-        } else {
-          container.innerHTML = `<div class="placeholder"><p>Este stream requiere abrirse directamente en YouTube:</p><br><a href="${channel.url}" target="_blank" style="color:var(--primary)">Abrir ${channel.name} en YouTube</a></div>`;
-        }
-      } else {
+      if (channel.isYT) {
+        container.innerHTML = `<iframe src="${channel.url}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+      } else if (channel.url.endsWith('.m3u8')) {
         const video = document.createElement('video');
         video.controls = true;
         video.autoplay = true;
@@ -371,13 +339,19 @@
         } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
           video.src = channel.url;
           video.play();
-        } else {
-          container.innerHTML = '<div class="placeholder">Formato de video no compatible con este navegador.</div>';
         }
+      } else {
+        // Para canales que bloquean iframe por CORS/seguridad (El Trece, El Nueve, Net TV)
+        container.innerHTML = `
+          <div class="placeholder">
+            <p>Este canal restringe la reproducción dentro de sitios de terceros.</p><br>
+            <a href="${channel.origUrl}" target="_blank" class="open-btn">Abrir señal oficial de ${channel.name} ↗</a>
+          </div>`;
       }
     }
 
-    loadChannels();
+    // Cargar al iniciar
+    renderChannels();
   </script>
 </body>
 </html>
