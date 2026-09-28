@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Argentina TV</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
   <style>
     :root {
       --bg-dark: #0f172a;
@@ -24,7 +25,7 @@
 
     html, body {
       height: 100%;
-      overflow: hidden;
+      overflow: hidden; /* Evita el scroll general de la ventana */
       background-color: var(--bg-dark);
       color: var(--text-main);
     }
@@ -89,12 +90,14 @@
       flex-shrink: 0;
     }
 
+    /* Scrollbar interno para la lista de canales */
     .channel-list {
       flex: 1;
       overflow-y: auto;
       list-style: none;
     }
 
+    /* Personalización de la barra de scroll */
     .channel-list::-webkit-scrollbar {
       width: 6px;
     }
@@ -104,6 +107,9 @@
     .channel-list::-webkit-scrollbar-thumb {
       background: var(--bg-hover);
       border-radius: 3px;
+    }
+    .channel-list::-webkit-scrollbar-thumb:hover {
+      background: var(--primary);
     }
 
     .channel-item {
@@ -154,10 +160,11 @@
       overflow: hidden;
     }
 
-    iframe {
+    video {
       width: 100%;
       height: 100%;
-      border: none;
+      max-height: 100%;
+      object-fit: contain;
     }
 
     .placeholder {
@@ -199,61 +206,35 @@
 
     <main class="main-content">
       <div class="player-container" id="playerContainer">
-        <!-- Reproductor incrustado inicial -->
-        <iframe 
-          id="externalPlayerFrame"
-          src="https://hlsjs.videojs.org/demo/?src=http%3A%2F%2F200.62.239.170%3A830%2Fplay%2Fa00p%2Findex.m3u8"
-          allow="autoplay; encrypted-media; fullscreen"
-          allowfullscreen>
-        </iframe>
+        <div class="placeholder">Seleccioná un canal para reproducir.</div>
       </div>
       <div class="stream-info">
-        <h2 id="currentChannelName">ESPN Premium Argentina (Servidor 200.62)</h2>
+        <h2 id="currentChannelName">Ningún canal seleccionado</h2>
       </div>
     </main>
   </div>
 
   <script>
-    const M3U_URLS = [
-      'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ar.m3u'
-    ];
-
-    // Canales del servidor intermedio configurados con el web player embebido
-    const EXTRA_CHANNELS = [
-      { 
-        name: 'ESPN Premium Argentina (200.62)', 
-        logo: '', 
-        url: 'http://200.62.239.170:830/play/a00p/index.m3u8' 
-      }
-    ];
+    const M3U_URL = 'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ar.m3u';
 
     let channels = [];
+    let hlsInstance = null;
 
     async function loadM3UPlaylist() {
       try {
-        const results = await Promise.allSettled(
-          M3U_URLS.map(async (url) => {
-            const response = await fetch(url);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            return parseM3U(await response.text());
-          })
-        );
-
-        const loaded = results
-          .filter(result => result.status === 'fulfilled')
-          .flatMap(result => result.value);
-
-        channels = deduplicateChannels([...EXTRA_CHANNELS, ...loaded]);
+        const response = await fetch(M3U_URL);
+        if (!response.ok) throw new Error('Error al descargar');
+        const text = await response.text();
+        parseM3U(text);
         renderChannels();
       } catch (error) {
-        channels = EXTRA_CHANNELS;
-        renderChannels();
+        document.getElementById('channelList').innerHTML = '<li class="placeholder">Error al obtener la lista de canales.</li>';
       }
     }
 
     function parseM3U(data) {
-      const parsed = [];
-      const lines = data.split(/\r?\n/);
+      channels = [];
+      const lines = data.split('\n');
       let currentChannel = {};
 
       lines.forEach(line => {
@@ -263,25 +244,15 @@
           const name = commaIndex !== -1 ? line.substring(commaIndex + 1).trim() : 'Canal sin nombre';
           const logoMatch = line.match(/tvg-logo="([^"]+)"/);
           const logo = logoMatch ? logoMatch[1] : '';
+
           currentChannel = { name, logo };
-        } else if (line && !line.startsWith('#')) {
-          if (/^https?:\/\//i.test(line) && currentChannel.name) {
+        } else if (line.startsWith('http')) {
+          if (currentChannel.name) {
             currentChannel.url = line;
-            parsed.push(currentChannel);
+            channels.push(currentChannel);
             currentChannel = {};
           }
         }
-      });
-      return parsed;
-    }
-
-    function deduplicateChannels(list) {
-      const seen = new Set();
-      return list.filter(channel => {
-        const key = `${channel.name.toLowerCase()}|${channel.url}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
       });
     }
 
@@ -297,9 +268,9 @@
         return;
       }
 
-      filtered.forEach((channel, index) => {
+      filtered.forEach(channel => {
         const li = document.createElement('li');
-        li.className = `channel-item ${index === 0 ? 'active' : ''}`;
+        li.className = 'channel-item';
         
         const logoHtml = channel.logo 
           ? `<img class="channel-logo" src="${channel.logo}" alt="" onerror="this.style.display='none'">` 
@@ -320,12 +291,35 @@
       if (element) element.classList.add('active');
 
       document.getElementById('currentChannelName').textContent = channel.name;
+      const container = document.getElementById('playerContainer');
+      container.innerHTML = '';
 
-      const iframe = document.getElementById('externalPlayerFrame');
-      
-      // Codifica la URL del canal para enviarla al reproductor web externo del iframe
-      const playerUrl = `https://hlsjs.videojs.org/demo/?src=${encodeURIComponent(channel.url)}`;
-      iframe.src = playerUrl;
+      if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+      }
+
+      const video = document.createElement('video');
+      video.controls = true;
+      video.autoplay = true;
+      container.appendChild(video);
+
+      if (Hls.isSupported()) {
+        hlsInstance = new Hls();
+        hlsInstance.loadSource(channel.url);
+        hlsInstance.attachMedia(video);
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+        hlsInstance.on(Hls.Events.ERROR, (event, data) => {
+          if (data.fatal) {
+            channels = channels.filter(c => c.url !== channel.url);
+            renderChannels();
+            container.innerHTML = '<div class="placeholder">Seleccioná un canal para reproducir.</div>';
+          }
+        });
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = channel.url;
+        video.play();
+      }
     }
 
     loadM3UPlaylist();
