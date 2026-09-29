@@ -1,10 +1,16 @@
+
 <!DOCTYPE html>
 
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Argentina TV - FFmpeg WASM</title>
+
+  <title>Argentina TV</title>
+
+  <!-- Shaka Player -->
+
+  <script src="https://cdn.jsdelivr.net/npm/shaka-player@latest/dist/shaka-player.compiled.js"></script>
 
   <style>
     :root {
@@ -16,6 +22,7 @@
       --text-muted: #94a3b8;
       --border: #334155;
       --danger: #ef4444;
+      --success: #22c55e;
     }
 
     * {
@@ -36,7 +43,7 @@
     body {
       height: 100%;
       overflow: hidden;
-      background: var(--bg-dark);
+      background-color: var(--bg-dark);
       color: var(--text-main);
     }
 
@@ -45,14 +52,23 @@
       flex-direction: column;
     }
 
+    /* =========================================================
+       HEADER
+       ========================================================= */
+
     header {
-      background: var(--bg-card);
+      background-color: var(--bg-card);
       padding: 1rem 1.5rem;
+
       border-bottom: 1px solid var(--border);
+
       display: flex;
       justify-content: space-between;
       align-items: center;
+
+      flex-wrap: wrap;
       gap: 1rem;
+
       height: 70px;
       flex-shrink: 0;
     }
@@ -61,7 +77,6 @@
       font-size: 1.25rem;
       font-weight: bold;
       color: var(--primary);
-      white-space: nowrap;
     }
 
     .search-box {
@@ -71,11 +86,17 @@
 
     .search-box input {
       width: 100%;
+
       padding: 0.5rem 1rem;
+
       border-radius: 8px;
+
       border: 1px solid var(--border);
-      background: var(--bg-dark);
+
+      background-color: var(--bg-dark);
+
       color: var(--text-main);
+
       outline: none;
     }
 
@@ -83,26 +104,44 @@
       border-color: var(--primary);
     }
 
+    /* =========================================================
+       CONTENEDOR
+       ========================================================= */
+
     .container {
       display: flex;
+
       flex: 1;
+
       height: calc(100vh - 70px);
+
       overflow: hidden;
     }
 
+    /* =========================================================
+       SIDEBAR
+       ========================================================= */
+
     .sidebar {
       width: 340px;
-      background: var(--bg-card);
+
+      background-color: var(--bg-card);
+
       border-right: 1px solid var(--border);
+
       display: flex;
       flex-direction: column;
+
       height: 100%;
+
       flex-shrink: 0;
     }
 
     .channel-list {
       flex: 1;
+
       overflow-y: auto;
+
       list-style: none;
     }
 
@@ -116,6 +155,7 @@
 
     .channel-list::-webkit-scrollbar-thumb {
       background: var(--bg-hover);
+
       border-radius: 3px;
     }
 
@@ -123,107 +163,150 @@
       background: var(--primary);
     }
 
+    /* =========================================================
+       CANALES
+       ========================================================= */
+
     .channel-item {
       padding: 0.75rem 1rem;
+
       border-bottom: 1px solid var(--border);
+
       cursor: pointer;
+
       display: flex;
+
       align-items: center;
+
       gap: 0.75rem;
+
       transition: background 0.2s;
     }
 
     .channel-item:hover,
     .channel-item.active {
-      background: var(--bg-hover);
+      background-color: var(--bg-hover);
     }
 
     .channel-logo {
       width: 30px;
       height: 30px;
+
       object-fit: contain;
+
       border-radius: 4px;
-      background: rgba(255, 255, 255, 0.05);
+
+      background-color: rgba(255, 255, 255, 0.05);
+
       flex-shrink: 0;
     }
 
     .channel-name {
       font-size: 0.9rem;
+
       font-weight: 500;
+
       white-space: nowrap;
+
       overflow: hidden;
+
       text-overflow: ellipsis;
     }
 
+    /* =========================================================
+       MAIN
+       ========================================================= */
+
     .main-content {
       flex: 1;
+
       display: flex;
+
       flex-direction: column;
-      background: #000;
+
+      background-color: #000;
+
       height: 100%;
+
       overflow: hidden;
     }
 
+    /* =========================================================
+       PLAYER
+       ========================================================= */
+
     .player-container {
       flex: 1;
+
       display: flex;
+
       align-items: center;
+
       justify-content: center;
-      background: #000;
+
+      background-color: #000;
+
       overflow: hidden;
+
       position: relative;
     }
 
     video {
       width: 100%;
       height: 100%;
+
       max-height: 100%;
+
       object-fit: contain;
+
       background: #000;
     }
 
+    /* =========================================================
+       SHAKA CONTROLES
+       ========================================================= */
+
+    .video-wrapper {
+      width: 100%;
+      height: 100%;
+
+      display: flex;
+
+      align-items: center;
+
+      justify-content: center;
+
+      position: relative;
+    }
+
+    /* =========================================================
+       PLACEHOLDER
+       ========================================================= */
+
     .placeholder {
       color: var(--text-muted);
+
       text-align: center;
+
       padding: 2rem;
+
       max-width: 600px;
+
       line-height: 1.6;
-    }
-
-    .status {
-      margin-top: 1rem;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-    }
-
-    .status.error {
-      color: var(--danger);
-    }
-
-    .stream-info {
-      background: var(--bg-card);
-      padding: 1rem 1.5rem;
-      border-top: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
-    .stream-info h2 {
-      font-size: 1rem;
-    }
-
-    .engine {
-      margin-top: 0.35rem;
-      font-size: 0.75rem;
-      color: var(--text-muted);
     }
 
     .loading {
       width: 42px;
       height: 42px;
+
       border: 4px solid var(--border);
+
       border-top-color: var(--primary);
+
       border-radius: 50%;
+
       animation: spin 1s linear infinite;
+
       margin: 0 auto 1rem;
     }
 
@@ -233,7 +316,58 @@
       }
     }
 
+    /* =========================================================
+       STATUS
+       ========================================================= */
+
+    .status {
+      margin-top: 0.75rem;
+
+      font-size: 0.8rem;
+
+      color: var(--text-muted);
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .status.ok {
+      color: var(--success);
+    }
+
+    /* =========================================================
+       INFO
+       ========================================================= */
+
+    .stream-info {
+      background-color: var(--bg-card);
+
+      padding: 1rem 1.5rem;
+
+      border-top: 1px solid var(--border);
+
+      flex-shrink: 0;
+    }
+
+    .stream-info h2 {
+      font-size: 1rem;
+    }
+
+    .engine {
+      margin-top: 0.35rem;
+
+      font-size: 0.75rem;
+
+      color: var(--text-muted);
+    }
+
+    /* =========================================================
+       MOBILE
+       ========================================================= */
+
     @media (max-width: 768px) {
+
       html,
       body {
         overflow: auto;
@@ -241,21 +375,28 @@
 
       .container {
         flex-direction: column-reverse;
+
         height: auto;
+
         overflow: visible;
       }
 
       .sidebar {
         width: 100%;
+
         height: 50vh;
       }
 
       .main-content {
         height: 50vh;
+
         position: sticky;
+
         top: 0;
+
         z-index: 10;
       }
+
     }
   </style>
 
@@ -263,691 +404,1258 @@
 
 <body>
 
-<header>
-  <div class="logo">🇦🇷 Argentina TV</div>
+  <!-- =========================================================
+       HEADER
+       ========================================================= -->
 
-  <div class="search-box">
-    <input
-      type="text"
-      id="searchInput"
-      placeholder="Buscar canal..."
-      oninput="filterChannels()"
+  <header>
+
+```
+<div class="logo">
+  🇦🇷 Argentina TV
+</div>
+
+<div class="search-box">
+
+  <input
+    type="text"
+    id="searchInput"
+    placeholder="Buscar canal..."
+  >
+
+</div>
+```
+
+  </header>
+
+  <!-- =========================================================
+       CONTENEDOR
+       ========================================================= -->
+
+  <div class="container">
+
+```
+<!-- =======================================================
+     SIDEBAR
+     ======================================================= -->
+
+<aside class="sidebar">
+
+  <ul
+    class="channel-list"
+    id="channelList"
+  >
+
+    <li class="placeholder">
+      Cargando lista de canales...
+    </li>
+
+  </ul>
+
+</aside>
+
+
+<!-- =======================================================
+     MAIN
+     ======================================================= -->
+
+<main class="main-content">
+
+  <div
+    class="player-container"
+    id="playerContainer"
+  >
+
+    <div class="placeholder">
+
+      Seleccioná un canal para reproducir.
+
+    </div>
+
+  </div>
+
+
+  <div class="stream-info">
+
+    <h2 id="currentChannelName">
+      Ningún canal seleccionado
+    </h2>
+
+    <div
+      class="engine"
+      id="engineStatus"
     >
-  </div>
-</header>
-
-<div class="container">
-
-  <aside class="sidebar">
-
-```
-<ul class="channel-list" id="channelList">
-  <li class="placeholder">
-    Cargando lista de canales...
-  </li>
-</ul>
-```
-
-  </aside>
-
-  <main class="main-content">
-
-```
-<div class="player-container" id="playerContainer">
-
-  <div class="placeholder">
-    <div class="loading"></div>
-
-    <div>
-      Inicializando reproductor FFmpeg WebAssembly...
+      Motor: Shaka Player
     </div>
 
-    <div class="status" id="playerStatus">
-      Preparando motor multimedia...
-    </div>
   </div>
 
-</div>
-
-<div class="stream-info">
-
-  <h2 id="currentChannelName">
-    Ningún canal seleccionado
-  </h2>
-
-  <div class="engine">
-    Motor: FFmpeg WebAssembly
-  </div>
-
-</div>
+</main>
 ```
 
-  </main>
+  </div>
 
-</div>
+  <!-- =========================================================
+       JAVASCRIPT
+       ========================================================= -->
 
-<script type="module">
+  <script>
 
-/*
- * ============================================================
- * CONFIGURACIÓN
- * ============================================================
- */
+    /* ===========================================================
+       CONFIGURACIÓN
+       =========================================================== */
 
-const M3U_URL =
-  'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ar.m3u';
-
-
-/*
- * ============================================================
- * VARIABLES
- * ============================================================
- */
-
-let channels = [];
-
-let currentChannel = null;
-
-let currentObjectURL = null;
+    const M3U_URL =
+      'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/ar.m3u';
 
 
-/*
- * ============================================================
- * ELEMENTOS
- * ============================================================
- */
+    /*
+     * Cantidad de reintentos de Shaka.
+     *
+     * Esto es importante para los streams que tienen
+     * segmentos que ocasionalmente fallan.
+     */
 
-const channelList =
-  document.getElementById('channelList');
+    const RETRY_PARAMETERS = {
 
-const playerContainer =
-  document.getElementById('playerContainer');
+      maxAttempts: 8,
 
-const currentChannelName =
-  document.getElementById('currentChannelName');
+      baseDelay: 1000,
 
-const playerStatus =
-  document.getElementById('playerStatus');
+      backoffFactor: 1.5,
+
+      fuzzFactor: 0.25,
+
+      timeout: 15000,
+
+      stallTimeout: 8000,
+
+      connectionTimeout: 10000
+
+    };
 
 
-/*
- * ============================================================
- * CARGAR LISTA M3U
- * ============================================================
- */
+    /* ===========================================================
+       VARIABLES
+       =========================================================== */
 
-async function loadM3UPlaylist() {
+    let channels = [];
 
-  try {
+    let player = null;
 
-    const response =
-      await fetch(M3U_URL, {
-        cache: 'no-store'
-      });
+    let video = null;
 
-    if (!response.ok) {
-      throw new Error(
-        'No se pudo descargar la lista M3U'
+    let currentChannel = null;
+
+    let reconnectTimer = null;
+
+    let reconnectAttempts = 0;
+
+    let intentionalStop = false;
+
+
+    /* ===========================================================
+       ELEMENTOS
+       =========================================================== */
+
+    const channelList =
+      document.getElementById(
+        'channelList'
       );
-    }
 
-    const text =
-      await response.text();
+    const playerContainer =
+      document.getElementById(
+        'playerContainer'
+      );
 
-    parseM3U(text);
+    const currentChannelName =
+      document.getElementById(
+        'currentChannelName'
+      );
 
-    renderChannels();
+    const engineStatus =
+      document.getElementById(
+        'engineStatus'
+      );
 
-    setStatus(
-      'Lista de canales cargada.',
-      false
-    );
-
-  } catch (error) {
-
-    console.error(error);
-
-    channelList.innerHTML = `
-      <li class="placeholder">
-        Error al obtener la lista de canales.
-      </li>
-    `;
-
-    setStatus(
-      'No se pudo cargar la lista de canales.',
-      true
-    );
-
-  }
-
-}
+    const searchInput =
+      document.getElementById(
+        'searchInput'
+      );
 
 
-/*
- * ============================================================
- * PARSER M3U
- * ============================================================
- */
+    /* ===========================================================
+       INICIALIZAR SHAKA
+       =========================================================== */
 
-function parseM3U(data) {
+    async function initShaka() {
 
-  channels = [];
+      /*
+       * Instalar polyfills recomendados por Shaka.
+       */
 
-  const lines =
-    data.split(/\r?\n/);
+      shaka.polyfill.installAll();
 
-  let currentChannel = {};
 
-  for (const originalLine of lines) {
+      /*
+       * Comprobar compatibilidad.
+       */
 
-    const line =
-      originalLine.trim();
+      if (!shaka.Player.isBrowserSupported()) {
 
-    if (line.startsWith('#EXTINF:')) {
-
-      const commaIndex =
-        line.indexOf(',');
-
-      const name =
-        commaIndex !== -1
-          ? line
-              .substring(commaIndex + 1)
-              .trim()
-          : 'Canal sin nombre';
-
-      const logoMatch =
-        line.match(
-          /tvg-logo="([^"]+)"/
+        console.error(
+          'Este navegador no es compatible con Shaka Player.'
         );
 
-      const logo =
-        logoMatch
-          ? logoMatch[1]
-          : '';
+        showError(
+          'Tu navegador no es compatible con Shaka Player.'
+        );
 
-      currentChannel = {
-        name,
-        logo
-      };
+        return false;
+      }
+
+
+      return true;
 
     }
 
-    else if (
-      line.startsWith('http://') ||
-      line.startsWith('https://')
-    ) {
 
-      if (currentChannel.name) {
+    /* ===========================================================
+       CARGAR PLAYLIST
+       =========================================================== */
 
-        currentChannel.url =
-          line;
+    async function loadM3UPlaylist() {
 
-        channels.push(
-          currentChannel
+      try {
+
+        const response =
+          await fetch(
+            M3U_URL,
+            {
+              cache: 'no-store'
+            }
+          );
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            'HTTP ' + response.status
+          );
+
+        }
+
+
+        const text =
+          await response.text();
+
+
+        parseM3U(text);
+
+
+        renderChannels();
+
+
+        console.log(
+          'Canales cargados:',
+          channels.length
         );
 
-        currentChannel = {};
+
+      } catch (error) {
+
+        console.error(
+          'Error cargando M3U:',
+          error
+        );
+
+
+        channelList.innerHTML = `
+
+          <li class="placeholder">
+
+            Error al obtener la lista
+            de canales.
+
+          </li>
+
+        `;
 
       }
 
     }
 
-  }
 
-}
+    /* ===========================================================
+       PARSER M3U
+       =========================================================== */
+
+    function parseM3U(data) {
+
+      channels = [];
 
 
-/*
- * ============================================================
- * RENDER CANALES
- * ============================================================
- */
+      const lines =
+        data.split(/\r?\n/);
 
-function renderChannels() {
 
-  const searchTerm =
-    document
-      .getElementById('searchInput')
-      .value
-      .toLowerCase()
-      .trim();
+      let currentChannel = {};
 
-  channelList.innerHTML = '';
 
-  const filtered =
-    channels.filter(channel =>
-      channel.name
-        .toLowerCase()
-        .includes(searchTerm)
-    );
+      for (const originalLine of lines) {
 
-  if (!filtered.length) {
+        const line =
+          originalLine.trim();
 
-    channelList.innerHTML = `
-      <li class="placeholder">
-        No hay canales disponibles.
-      </li>
-    `;
 
-    return;
-  }
+        /*
+         * Información del canal.
+         */
 
-  filtered.forEach(channel => {
+        if (
+          line.startsWith('#EXTINF:')
+        ) {
 
-    const li =
-      document.createElement('li');
+          const commaIndex =
+            line.indexOf(',');
 
-    li.className =
-      'channel-item';
 
-    if (
-      currentChannel &&
-      currentChannel.url === channel.url
-    ) {
-      li.classList.add('active');
+          const name =
+            commaIndex !== -1
+
+              ? line
+                  .substring(
+                    commaIndex + 1
+                  )
+                  .trim()
+
+              : 'Canal sin nombre';
+
+
+          const logoMatch =
+            line.match(
+              /tvg-logo="([^"]+)"/
+            );
+
+
+          const logo =
+            logoMatch
+              ? logoMatch[1]
+              : '';
+
+
+          currentChannel = {
+
+            name,
+
+            logo
+
+          };
+
+        }
+
+
+        /*
+         * URL del stream.
+         */
+
+        else if (
+          line.startsWith(
+            'http://'
+          )
+          ||
+          line.startsWith(
+            'https://'
+          )
+        ) {
+
+          if (
+            currentChannel.name
+          ) {
+
+            currentChannel.url =
+              line;
+
+
+            channels.push(
+              currentChannel
+            );
+
+
+            currentChannel = {};
+
+          }
+
+        }
+
+      }
+
     }
 
-    const logoHtml =
-      channel.logo
 
-        ? `
-          <img
-            class="channel-logo"
-            src="${escapeHTML(channel.logo)}"
-            alt=""
-            onerror="this.style.display='none'"
-          >
-        `
+    /* ===========================================================
+       RENDER CANALES
+       =========================================================== */
 
-        : `
-          <span style="font-size:1.2rem;">
-            📺
-          </span>
+    function renderChannels() {
+
+      const searchTerm =
+        searchInput.value
+          .toLowerCase()
+          .trim();
+
+
+      channelList.innerHTML = '';
+
+
+      const filtered =
+        channels.filter(
+          channel =>
+            channel.name
+              .toLowerCase()
+              .includes(
+                searchTerm
+              )
+        );
+
+
+      if (!filtered.length) {
+
+        channelList.innerHTML = `
+
+          <li class="placeholder">
+
+            No hay canales disponibles.
+
+          </li>
+
         `;
 
-    li.innerHTML = `
-      ${logoHtml}
-      <span class="channel-name">
-        ${escapeHTML(channel.name)}
-      </span>
-    `;
+        return;
 
-    li.onclick =
-      () => playChannel(channel, li);
-
-    channelList.appendChild(li);
-
-  });
-
-}
+      }
 
 
-/*
- * ============================================================
- * BUSCADOR
- * ============================================================
- */
+      filtered.forEach(
+        channel => {
 
-function filterChannels() {
-  renderChannels();
-}
+          const li =
+            document.createElement(
+              'li'
+            );
 
 
-/*
- * ============================================================
- * REPRODUCTOR
- * ============================================================
- */
+          li.className =
+            'channel-item';
 
-async function playChannel(channel, element) {
 
-  currentChannel =
-    channel;
+          /*
+           * Mantener activo el canal actual
+           * después de filtrar.
+           */
 
-  document
-    .querySelectorAll('.channel-item')
-    .forEach(item =>
-      item.classList.remove('active')
-    );
+          if (
+            currentChannel &&
+            currentChannel.url ===
+              channel.url
+          ) {
 
-  if (element) {
-    element.classList.add('active');
-  }
+            li.classList.add(
+              'active'
+            );
 
-  currentChannelName.textContent =
-    channel.name;
+          }
 
-  destroyCurrentPlayer();
 
-  playerContainer.innerHTML = `
-    <div class="placeholder">
+          let logoHtml;
 
-      <div class="loading"></div>
 
-      <div>
-        Preparando FFmpeg WebAssembly...
-      </div>
+          if (channel.logo) {
 
-      <div
-        class="status"
-        id="playerStatus"
-      >
-        Analizando stream...
-      </div>
+            logoHtml = `
 
-    </div>
-  `;
+              <img
+                class="channel-logo"
+                src="${escapeHTML(
+                  channel.logo
+                )}"
+                alt=""
+                onerror="
+                  this.style.display='none'
+                "
+              >
 
-  try {
+            `;
 
-    /*
-     * --------------------------------------------------------
-     * IMPORTANTE
-     * --------------------------------------------------------
-     *
-     * FFmpeg.wasm no funciona como HLS.js.
-     *
-     * Esta función intenta obtener directamente el recurso.
-     * Muchos streams HLS requieren una reproducción HLS
-     * continua y no pueden ser tratados como un archivo.
-     *
-     * Si el servidor permite CORS y entrega un archivo que
-     * FFmpeg pueda leer mediante fetch(), se puede procesar.
-     *
-     * --------------------------------------------------------
-     */
+          } else {
 
-    const response =
-      await fetch(
-        channel.url,
-        {
-          cache: 'no-store'
+            logoHtml = `
+
+              <span
+                style="
+                  font-size:1.2rem;
+                "
+              >
+                📺
+              </span>
+
+            `;
+
+          }
+
+
+          li.innerHTML = `
+
+            ${logoHtml}
+
+            <span class="channel-name">
+
+              ${escapeHTML(
+                channel.name
+              )}
+
+            </span>
+
+          `;
+
+
+          li.onclick =
+            () =>
+              playChannel(
+                channel,
+                li
+              );
+
+
+          channelList.appendChild(
+            li
+          );
+
         }
       );
 
-    if (!response.ok) {
-      throw new Error(
-        `HTTP ${response.status}`
-      );
     }
 
-    const contentType =
-      response.headers.get(
-        'content-type'
-      ) || '';
 
-    console.log(
-      'Content-Type:',
-      contentType
+    /* ===========================================================
+       BUSCADOR
+       =========================================================== */
+
+    searchInput.addEventListener(
+      'input',
+      renderChannels
     );
 
-    /*
-     * Si es un M3U8, mostramos el motivo por el que
-     * no lo tratamos como archivo normal.
-     */
 
-    if (
-      channel.url.includes('.m3u8') ||
-      contentType.includes(
-        'mpegurl'
-      )
+    /* ===========================================================
+       REPRODUCIR CANAL
+       =========================================================== */
+
+    async function playChannel(
+      channel,
+      element
     ) {
 
-      showExperimentalHLSMessage();
+      intentionalStop = true;
 
-      return;
+
+      /*
+       * Cancelar cualquier reconexión
+       * pendiente.
+       */
+
+      if (reconnectTimer) {
+
+        clearTimeout(
+          reconnectTimer
+        );
+
+        reconnectTimer = null;
+
+      }
+
+
+      /*
+       * Destruir player anterior.
+       */
+
+      await destroyPlayer();
+
+
+      intentionalStop = false;
+
+
+      currentChannel =
+        channel;
+
+
+      reconnectAttempts = 0;
+
+
+      /*
+       * Marcar canal seleccionado.
+       */
+
+      document
+        .querySelectorAll(
+          '.channel-item'
+        )
+        .forEach(
+          item =>
+            item.classList.remove(
+              'active'
+            )
+        );
+
+
+      if (element) {
+
+        element.classList.add(
+          'active'
+        );
+
+      }
+
+
+      currentChannelName.textContent =
+        channel.name;
+
+
+      /*
+       * Crear reproductor.
+       */
+
+      await createPlayer(
+        channel.url
+      );
+
     }
 
-    /*
-     * Archivo multimedia directo.
-     */
 
-    const data =
-      await response.arrayBuffer();
+    /* ===========================================================
+       CREAR PLAYER
+       =========================================================== */
 
-    const blob =
-      new Blob(
-        [data],
-        {
-          type:
-            contentType ||
-            'video/mp4'
+    async function createPlayer(
+      streamURL
+    ) {
+
+      /*
+       * Crear contenedor.
+       */
+
+      playerContainer.innerHTML = `
+
+        <div class="video-wrapper">
+
+          <video
+            id="video"
+            controls
+            autoplay
+            playsinline
+          ></video>
+
+        </div>
+
+      `;
+
+
+      video =
+        document.getElementById(
+          'video'
+        );
+
+
+      /*
+       * Crear instancia Shaka.
+       */
+
+      player =
+        new shaka.Player(
+          video
+        );
+
+
+      /*
+       * Configuración de red.
+       *
+       * Shaka utiliza estos parámetros
+       * para manifest y segmentos.
+       */
+
+      player.configure({
+
+        manifest: {
+
+          retryParameters:
+            RETRY_PARAMETERS
+
+        },
+
+        streaming: {
+
+          retryParameters:
+            RETRY_PARAMETERS,
+
+
+          /*
+           * Mantener más datos en buffer
+           * para soportar pequeños cortes.
+           */
+
+          bufferingGoal: 20,
+
+          rebufferingGoal: 4,
+
+          bufferBehind: 30,
+
+
+          /*
+           * Saltar pequeños huecos
+           * entre segmentos.
+           */
+
+          gapDetectionThreshold: 0.5,
+
+
+          /*
+           * Permitir recuperación del
+           * MediaSource cuando sea posible.
+           */
+
+          allowMediaSourceRecoveries:
+            true,
+
+
+          /*
+           * Para HLS en vivo.
+           */
+
+          lowLatencyMode: false
+
+        },
+
+        abr: {
+
+          enabled: true,
+
+          defaultBandwidthEstimate:
+            1000000,
+
+          bandwidthUpgradeTarget:
+            0.85,
+
+          bandwidthDowngradeTarget:
+            0.95
+
+        }
+
+      });
+
+
+      /*
+       * Eventos de error.
+       */
+
+      player.addEventListener(
+        'error',
+        onPlayerError
+      );
+
+
+      /*
+       * Error de video HTML5.
+       */
+
+      video.addEventListener(
+        'error',
+        () => {
+
+          console.error(
+            'HTML5 video error:',
+            video.error
+          );
+
+          scheduleReconnect(
+            'Error del elemento de video'
+          );
+
         }
       );
 
-    const objectURL =
-      URL.createObjectURL(blob);
 
-    currentObjectURL =
-      objectURL;
+      /*
+       * Detectar buffering.
+       */
 
-    const video =
-      document.createElement('video');
+      video.addEventListener(
+        'waiting',
+        () => {
 
-    video.controls = true;
+          setEngineStatus(
+            'Buffering...',
+            false
+          );
 
-    video.autoplay = true;
+        }
+      );
 
-    video.playsInline = true;
 
-    video.src =
-      objectURL;
+      /*
+       * Cuando vuelve a reproducir.
+       */
 
-    playerContainer.innerHTML = '';
+      video.addEventListener(
+        'playing',
+        () => {
 
-    playerContainer.appendChild(
-      video
-    );
+          reconnectAttempts = 0;
 
-    await video.play();
+          setEngineStatus(
+            'Shaka Player • Reproduciendo',
+            true
+          );
 
-  } catch (error) {
+        }
+      );
 
-    console.error(
-      'Error FFmpeg/WASM:',
+
+      try {
+
+        setEngineStatus(
+          'Conectando con el stream...',
+          false
+        );
+
+
+        /*
+         * Cargar manifest HLS.
+         */
+
+        await player.load(
+          streamURL
+        );
+
+
+        /*
+         * Reproducir.
+         */
+
+        await video.play();
+
+
+        setEngineStatus(
+          'Shaka Player • En vivo',
+          true
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          'Error cargando stream:',
+          error
+        );
+
+
+        /*
+         * Intentar reconexión.
+         */
+
+        scheduleReconnect(
+          getErrorMessage(error)
+        );
+
+      }
+
+    }
+
+
+    /* ===========================================================
+       ERROR SHAKA
+       =========================================================== */
+
+    function onPlayerError(event) {
+
+      const error =
+        event.detail;
+
+
+      console.error(
+        'Shaka Error:',
+        error
+      );
+
+
+      /*
+       * Algunos errores son recuperables.
+       *
+       * No eliminamos el canal de la lista
+       * automáticamente.
+       */
+
+      if (
+        error &&
+        error.severity ===
+          shaka.util.Error.Severity.CRITICAL
+      ) {
+
+        scheduleReconnect(
+          getErrorMessage(error)
+        );
+
+      } else {
+
+        setEngineStatus(
+          'Problema temporal, intentando continuar...',
+          false
+        );
+
+      }
+
+    }
+
+
+    /* ===========================================================
+       RECONEXIÓN AUTOMÁTICA
+       =========================================================== */
+
+    function scheduleReconnect(
+      reason
+    ) {
+
+      if (
+        intentionalStop ||
+        !currentChannel
+      ) {
+
+        return;
+
+      }
+
+
+      if (reconnectTimer) {
+
+        return;
+
+      }
+
+
+      reconnectAttempts++;
+
+
+      /*
+       * Backoff progresivo.
+       *
+       * 2s
+       * 3s
+       * 4.5s
+       * 6.75s
+       * ...
+       */
+
+      const delay =
+        Math.min(
+          30000,
+          2000 *
+          Math.pow(
+            1.5,
+            reconnectAttempts - 1
+          )
+        );
+
+
+      setEngineStatus(
+
+        `Reconectando en ${Math.ceil(
+          delay / 1000
+        )} segundos...`,
+
+        false
+
+      );
+
+
+      console.warn(
+        'Reconexión:',
+        reason,
+        'en',
+        delay,
+        'ms'
+      );
+
+
+      reconnectTimer =
+        setTimeout(
+          async () => {
+
+            reconnectTimer =
+              null;
+
+
+            if (
+              !currentChannel ||
+              intentionalStop
+            ) {
+
+              return;
+
+            }
+
+
+            await destroyPlayer();
+
+
+            await createPlayer(
+              currentChannel.url
+            );
+
+          },
+
+          delay
+
+        );
+
+    }
+
+
+    /* ===========================================================
+       DESTRUIR PLAYER
+       =========================================================== */
+
+    async function destroyPlayer() {
+
+      if (player) {
+
+        try {
+
+          await player.destroy();
+
+        } catch (error) {
+
+          console.warn(
+            'Error destruyendo Shaka:',
+            error
+          );
+
+        }
+
+        player = null;
+
+      }
+
+
+      if (video) {
+
+        try {
+
+          video.pause();
+
+          video.removeAttribute(
+            'src'
+          );
+
+          video.load();
+
+        } catch (error) {
+
+          console.warn(
+            error
+          );
+
+        }
+
+        video = null;
+
+      }
+
+
+      playerContainer.innerHTML = `
+
+        <div class="placeholder">
+
+          Seleccioná un canal para reproducir.
+
+        </div>
+
+      `;
+
+    }
+
+
+    /* ===========================================================
+       ESTADO
+       =========================================================== */
+
+    function setEngineStatus(
+      text,
+      ok
+    ) {
+
+      engineStatus.textContent =
+        text;
+
+
+      engineStatus.className =
+        ok
+
+          ? 'engine status ok'
+
+          : 'engine status';
+
+    }
+
+
+    /* ===========================================================
+       ERROR VISUAL
+       =========================================================== */
+
+    function showError(
+      message
+    ) {
+
+      playerContainer.innerHTML = `
+
+        <div class="placeholder">
+
+          <div
+            style="
+              font-size:3rem;
+              margin-bottom:1rem;
+            "
+          >
+            ⚠️
+          </div>
+
+          <div>
+
+            ${escapeHTML(
+              message
+            )}
+
+          </div>
+
+        </div>
+
+      `;
+
+    }
+
+
+    /* ===========================================================
+       OBTENER MENSAJE DE ERROR
+       =========================================================== */
+
+    function getErrorMessage(
       error
-    );
+    ) {
 
-    showError(
-      `No se pudo abrir el stream.<br><br>
-       ${escapeHTML(error.message)}`
-    );
+      if (!error) {
 
-  }
+        return 'Error desconocido';
 
-}
+      }
 
 
-/*
- * ============================================================
- * MENSAJE HLS
- * ============================================================
- */
+      if (
+        error.code
+      ) {
 
-function showExperimentalHLSMessage() {
+        return (
+          'Shaka error ' +
+          error.code
+        );
 
-  playerContainer.innerHTML = `
-
-    <div class="placeholder">
-
-      <div style="font-size:3rem;">
-        ⚠️
-      </div>
-
-      <h3 style="margin-bottom:1rem;">
-        Stream HLS detectado
-      </h3>
-
-      <p>
-        Este canal utiliza HLS (.m3u8).
-      </p>
-
-      <p style="margin-top:1rem;">
-        FFmpeg WebAssembly puede procesar
-        multimedia dentro del navegador,
-        pero no reemplaza directamente
-        el motor de reproducción HLS.
-      </p>
-
-      <div
-        class="status"
-        style="margin-top:1rem;"
-      >
-        ${escapeHTML(
-          currentChannel
-            ? currentChannel.url
-            : ''
-        )}
-      </div>
-
-    </div>
-
-  `;
-
-}
+      }
 
 
-/*
- * ============================================================
- * ERROR
- * ============================================================
- */
+      if (
+        error.message
+      ) {
 
-function showError(message) {
+        return error.message;
 
-  playerContainer.innerHTML = `
-
-    <div class="placeholder">
-
-      <div style="font-size:3rem;">
-        ❌
-      </div>
-
-      <h3>
-        Error de reproducción
-      </h3>
-
-      <div
-        class="status error"
-      >
-        ${message}
-      </div>
-
-    </div>
-
-  `;
-
-}
+      }
 
 
-/*
- * ============================================================
- * STATUS
- * ============================================================
- */
+      return String(
+        error
+      );
 
-function setStatus(
-  message,
-  error = false
-) {
-
-  if (!playerStatus) {
-    return;
-  }
-
-  playerStatus.innerHTML =
-    message;
-
-  playerStatus.className =
-    error
-      ? 'status error'
-      : 'status';
-
-}
+    }
 
 
-/*
- * ============================================================
- * DESTRUIR PLAYER
- * ============================================================
- */
+    /* ===========================================================
+       ESCAPAR HTML
+       =========================================================== */
 
-function destroyCurrentPlayer() {
+    function escapeHTML(
+      value
+    ) {
 
-  const video =
-    playerContainer.querySelector(
-      'video'
-    );
+      return String(value)
 
-  if (video) {
+        .replace(
+          /&/g,
+          '&amp;'
+        )
 
-    video.pause();
+        .replace(
+          /</g,
+          '&lt;'
+        )
 
-    video.removeAttribute(
-      'src'
-    );
+        .replace(
+          />/g,
+          '&gt;'
+        )
 
-    video.load();
+        .replace(
+          /"/g,
+          '&quot;'
+        )
 
-  }
+        .replace(
+          /'/g,
+          '&#039;'
+        );
 
-  if (currentObjectURL) {
-
-    URL.revokeObjectURL(
-      currentObjectURL
-    );
-
-    currentObjectURL =
-      null;
-
-  }
-
-}
-
-
-/*
- * ============================================================
- * SEGURIDAD HTML
- * ============================================================
- */
-
-function escapeHTML(value) {
-
-  return String(value)
-    .replace(
-      /&/g,
-      '&amp;'
-    )
-    .replace(
-      /</g,
-      '&lt;'
-    )
-    .replace(
-      />/g,
-      '&gt;'
-    )
-    .replace(
-      /"/g,
-      '&quot;'
-    )
-    .replace(
-      /'/g,
-      '&#039;'
-    );
-
-}
+    }
 
 
-/*
- * ============================================================
- * INICIO
- * ============================================================
- */
+    /* ===========================================================
+       INICIO
+       =========================================================== */
 
-loadM3UPlaylist();
+    async function start() {
 
-</script>
+      /*
+       * Inicializar Shaka.
+       */
+
+      const supported =
+        await initShaka();
+
+
+      if (!supported) {
+
+        return;
+
+      }
+
+
+      /*
+       * Cargar canales.
+       */
+
+      await loadM3UPlaylist();
+
+    }
+
+
+    start();
+
+  </script>
 
 </body>
 </html>
-
