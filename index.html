@@ -1,829 +1,510 @@
-
+````html
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Argentina TV</title>
+<title>Argentina TV</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.13/dist/hls.min.js"></script>
 
-  <style>
-    * {
-      box-sizing: border-box;
-    }
+<style>
+* {
+    box-sizing: border-box;
+}
 
-    body {
-      margin: 0;
-      background: #111;
-      color: #fff;
-      font-family: Arial, Helvetica, sans-serif;
-      overflow: hidden;
-    }
+html,
+body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    background: #0b0b0b;
+    color: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+    overflow: hidden;
+}
 
-    header {
-      height: 70px;
-      background: #181818;
-      display: flex;
-      align-items: center;
-      padding: 0 20px;
-      border-bottom: 1px solid #292929;
-    }
+body {
+    display: flex;
+    flex-direction: column;
+}
 
-    header h1 {
-      margin: 0;
-      font-size: 22px;
-    }
+/* =========================
+   HEADER
+========================= */
 
-    .container {
-      display: flex;
-      height: calc(100vh - 70px);
-    }
+header {
+    height: 64px;
+    min-height: 64px;
+    background: #151515;
+    border-bottom: 1px solid #292929;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+}
 
-    /* SIDEBAR */
+header h1 {
+    margin: 0;
+    font-size: 21px;
+    font-weight: 600;
+}
+
+/* =========================
+   CONTENEDOR
+========================= */
+
+.container {
+    display: flex;
+    width: 100%;
+    height: calc(100vh - 64px);
+}
+
+/* =========================
+   SIDEBAR
+========================= */
+
+.sidebar {
+    width: 330px;
+    min-width: 330px;
+    background: #151515;
+    border-right: 1px solid #292929;
+    display: flex;
+    flex-direction: column;
+}
+
+.search {
+    padding: 12px;
+    border-bottom: 1px solid #292929;
+}
+
+.search input {
+    width: 100%;
+    height: 40px;
+    padding: 0 13px;
+    border: 0;
+    outline: none;
+    border-radius: 7px;
+    background: #292929;
+    color: #fff;
+    font-size: 14px;
+}
+
+.search input::placeholder {
+    color: #999;
+}
+
+.channels {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.channel {
+    min-height: 54px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #222;
+    transition: background .15s;
+}
+
+.channel:hover {
+    background: #252525;
+}
+
+.channel.active {
+    background: #333;
+}
+
+.channel-logo {
+    width: 48px;
+    height: 36px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.channel-logo img {
+    max-width: 46px;
+    max-height: 34px;
+    object-fit: contain;
+}
+
+.channel-name {
+    font-size: 14px;
+    line-height: 18px;
+    color: #eee;
+}
+
+/* =========================
+   REPRODUCTOR
+========================= */
+
+.main {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    background: #000;
+}
+
+.player-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background: #000;
+}
+
+video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #000;
+}
+
+/* =========================
+   ESTADO
+========================= */
+
+.status {
+    position: absolute;
+    left: 18px;
+    bottom: 18px;
+    padding: 8px 12px;
+    background: rgba(0,0,0,.75);
+    border-radius: 6px;
+    font-size: 13px;
+    color: #ddd;
+    pointer-events: none;
+}
+
+.status.hidden {
+    display: none;
+}
+
+.status.error {
+    color: #ff6b6b;
+}
+
+/* =========================
+   SCROLLBAR
+========================= */
+
+.channels::-webkit-scrollbar {
+    width: 7px;
+}
+
+.channels::-webkit-scrollbar-track {
+    background: #111;
+}
+
+.channels::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 5px;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 700px) {
 
     .sidebar {
-      width: 340px;
-      min-width: 340px;
-      background: #181818;
-      border-right: 1px solid #292929;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .search {
-      padding: 12px;
-      border-bottom: 1px solid #292929;
-    }
-
-    .search input {
-      width: 100%;
-      padding: 11px 14px;
-      border: none;
-      border-radius: 7px;
-      background: #292929;
-      color: white;
-      outline: none;
-      font-size: 14px;
-    }
-
-    .search input::placeholder {
-      color: #888;
-    }
-
-    .channels {
-      overflow-y: auto;
-      flex: 1;
-    }
-
-    .channel {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 14px;
-      cursor: pointer;
-      border-bottom: 1px solid #222;
-      transition: background 0.15s;
-    }
-
-    .channel:hover {
-      background: #252525;
-    }
-
-    .channel.active {
-      background: #303030;
-    }
-
-    .channel-logo {
-      width: 52px;
-      height: 38px;
-      object-fit: contain;
-      background: #222;
-      border-radius: 5px;
-      flex-shrink: 0;
+        width: 250px;
+        min-width: 250px;
     }
 
     .channel-name {
-      font-size: 14px;
-      line-height: 18px;
-    }
-
-    /* PLAYER */
-
-    .main {
-      flex: 1;
-      background: #000;
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
-    }
-
-    .player-container {
-      flex: 1;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #000;
-    }
-
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      background: #000;
-    }
-
-    .status {
-      position: absolute;
-      left: 20px;
-      bottom: 20px;
-      padding: 9px 14px;
-      background: rgba(0, 0, 0, 0.75);
-      border-radius: 6px;
-      font-size: 13px;
-      color: #ddd;
-      pointer-events: none;
-    }
-
-    .loading {
-      color: #aaa;
-    }
-
-    .error {
-      color: #ff6666;
-    }
-
-    @media (max-width: 700px) {
-      .sidebar {
-        width: 250px;
-        min-width: 250px;
-      }
-
-      .channel-logo {
-        width: 42px;
-        height: 32px;
-      }
-
-      .channel-name {
         font-size: 13px;
-      }
     }
-  </style>
+
+    .channel-logo {
+        width: 42px;
+    }
+}
+</style>
 </head>
 
 <body>
 
 <header>
-  <h1>📺 Argentina TV</h1>
+    <h1>📺 Argentina TV</h1>
 </header>
 
 <div class="container">
 
-  <aside class="sidebar">
+    <aside class="sidebar">
 
-    <div class="search">
-      <input
-        type="text"
-        id="search"
-        placeholder="Buscar canal..."
-        oninput="filterChannels()"
-      >
-    </div>
+        <div class="search">
+            <input
+                id="search"
+                type="text"
+                placeholder="Buscar canal..."
+                autocomplete="off"
+            >
+        </div>
 
-    <div class="channels" id="channels"></div>
+        <div
+            class="channels"
+            id="channels"
+        ></div>
 
-  </aside>
+    </aside>
 
-  <main class="main">
+    <main class="main">
 
-    <div class="player-container">
+        <div class="player-container">
 
-      <video
-        id="video"
-        controls
-        autoplay
-        playsinline
-      ></video>
+            <video
+                id="video"
+                controls
+                playsinline
+                autoplay
+            ></video>
 
-      <div class="status loading" id="status">
-        Seleccioná un canal
-      </div>
+            <div
+                id="status"
+                class="status"
+            >
+                Seleccioná un canal
+            </div>
 
-    </div>
+        </div>
 
-  </main>
+    </main>
 
 </div>
 
 <script>
 
-  /*
-   * ============================================================
-   * LISTA DE CANALES
-   * ============================================================
-   */
+/* ============================================================
+   CANALES
+============================================================ */
 
-  const channels = [
+const channels = [
 
-    {
-      name: "00_HBO2",
-      url: "http://200.62.239.170:830/play/a08c/index.m3u8"
-    },
-    {
-      name: "A&E HD",
-      url: "http://200.62.239.170:830/play/a03w/index.m3u8"
-    },
-    {
-      name: "AMC HD",
-      url: "http://200.62.239.170:830/play/a048/index.m3u8"
-    },
-    {
-      name: "ATV",
-      url: "http://200.62.239.170:830/play/a04y/index.m3u8"
-    },
-    {
-      name: "AXN HD",
-      url: "http://200.62.239.170:830/play/a06e/index.m3u8"
-    },
-    {
-      name: "Adult Swim",
-      url: "http://200.62.239.170:830/play/a07t/index.m3u8"
-    },
-    {
-      name: "America TV HD",
-      url: "http://200.62.239.170:830/play/a04n/index.m3u8"
-    },
-    {
-      name: "Animal Planet HD",
-      url: "http://200.62.239.170:830/play/a066/index.m3u8"
-    },
-    {
-      name: "Antena 3",
-      url: "http://200.62.239.170:830/play/a053/index.m3u8"
-    },
-    {
-      name: "Atres Series",
-      url: "http://200.62.239.170:830/play/a08m/index.m3u8"
-    },
-    {
-      name: "BBC World",
-      url: "http://200.62.239.170:830/play/a051/index.m3u8"
-    },
-    {
-      name: "BETHEL TV",
-      url: "http://200.62.239.170:830/play/a00u/index.m3u8"
-    },
-    {
-      name: "Baby TV",
-      url: "http://200.62.239.170:830/play/a01v/index.m3u8"
-    },
-    {
-      name: "CHV HD",
-      url: "http://200.62.239.170:830/play/a00d/index.m3u8"
-    },
-    {
-      name: "CNN Chile",
-      url: "http://200.62.239.170:830/play/a07d/index.m3u8"
-    },
-    {
-      name: "CNN Español",
-      url: "http://200.62.239.170:830/play/a022/index.m3u8"
-    },
-    {
-      name: "CNN International",
-      url: "http://200.62.239.170:830/play/a097/index.m3u8"
-    },
-    {
-      name: "Canal 13 HD",
-      url: "http://200.62.239.170:830/play/a06k/index.m3u8"
-    },
-    {
-      name: "Canal 24 Horas HD",
-      url: "http://200.62.239.170:830/play/a07f/index.m3u8"
-    },
-    {
-      name: "Canal N",
-      url: "http://200.62.239.170:830/play/a091/index.m3u8"
-    },
-    {
-      name: "Cartoon Network HD",
-      url: "http://200.62.239.170:830/play/a094/index.m3u8"
-    },
-    {
-      name: "Cartoonito",
-      url: "http://200.62.239.170:830/play/a09c/index.m3u8"
-    },
-    {
-      name: "Cinecanal HD",
-      url: "http://200.62.239.170:830/play/a06b/index.m3u8"
-    },
-    {
-      name: "Cinemax HD",
-      url: "http://200.62.239.170:830/play/a02j/index.m3u8"
-    },
-    {
-      name: "Comedy Central HD",
-      url: "http://200.62.239.170:830/play/a06w/index.m3u8"
-    },
-    {
-      name: "D1 SPORTS | INKA",
-      url: "http://200.62.239.170:830/play/a07b/index.m3u8"
-    },
-    {
-      name: "DHE HD",
-      url: "http://200.62.239.170:830/play/a063/index.m3u8"
-    },
-    {
-      name: "DW Español",
-      url: "http://200.62.239.170:830/play/a05l/index.m3u8"
-    },
-    {
-      name: "De Película",
-      url: "http://200.62.239.170:830/play/a08f/index.m3u8"
-    },
-    {
-      name: "Discovery Channel HD",
-      url: "http://200.62.239.170:830/play/a067/index.m3u8"
-    },
-    {
-      name: "Discovery Kids",
-      url: "http://200.62.239.170:830/play/a08q/index.m3u8"
-    },
-    {
-      name: "Discovery Kids HD",
-      url: "http://200.62.239.170:830/play/a098/index.m3u8"
-    },
-    {
-      name: "Discovery Science",
-      url: "http://200.62.239.170:830/play/a07k/index.m3u8"
-    },
-    {
-      name: "Discovery Theater HD",
-      url: "http://200.62.239.170:830/play/a00b/index.m3u8"
-    },
-    {
-      name: "Discovery Turbo",
-      url: "http://200.62.239.170:830/play/a02i/index.m3u8"
-    },
-    {
-      name: "Discovery World HD",
-      url: "http://200.62.239.170:830/play/a06o/index.m3u8"
-    },
-    {
-      name: "Disney HD",
-      url: "http://200.62.239.170:830/play/a06h/index.m3u8"
-    },
-    {
-      name: "Disney Junior",
-      url: "http://200.62.239.170:830/play/a02g/index.m3u8"
-    },
-    {
-      name: "Distrito Comedia",
-      url: "http://200.62.239.170:830/play/a03i/index.m3u8"
-    },
-    {
-      name: "E! Entertainment TV",
-      url: "http://200.62.239.170:830/play/a07l/index.m3u8"
-    },
-    {
-      name: "ESPN 2 HD",
-      url: "http://200.62.239.170:830/play/a00f/index.m3u8"
-    },
-    {
-      name: "ESPN 3 HD",
-      url: "http://200.62.239.170:830/play/a06r/index.m3u8"
-    },
-    {
-      name: "ESPN 4 HD",
-      url: "http://200.62.239.170:830/play/a06i/index.m3u8"
-    },
-    {
-      name: "ESPN 5 HD",
-      url: "http://200.62.239.170:830/play/a06m/index.m3u8"
-    },
-    {
-      name: "ESPN 6 HD",
-      url: "http://200.62.239.170:830/play/a03r/index.m3u8"
-    },
-    {
-      name: "ESPN 7 HD",
-      url: "http://200.62.239.170:830/play/a01a/index.m3u8"
-    },
-    {
-      name: "ESPN HD",
-      url: "http://200.62.239.170:830/play/a00n/index.m3u8"
-    },
-    {
-      name: "ESPN Premium HD",
-      url: "http://200.62.239.170:830/play/a00p/index.m3u8"
-    },
-    {
-      name: "EWTN",
-      url: "http://200.62.239.170:830/play/a07q/index.m3u8"
-    },
-    {
-      name: "El Gourmet HD",
-      url: "http://200.62.239.170:830/play/a03y/index.m3u8"
-    },
-    {
-      name: "Enlace",
-      url: "http://200.62.239.170:830/play/a07s/index.m3u8"
-    },
-    {
-      name: "Europa Europa",
-      url: "http://200.62.239.170:830/play/a03d/index.m3u8"
-    },
-    {
-      name: "Exitosa TV",
-      url: "http://200.62.239.170:830/play/a092/index.m3u8"
-    },
-    {
-      name: "FX HD",
-      url: "http://200.62.239.170:830/play/a01d/index.m3u8"
-    },
-    {
-      name: "Film&Arts",
-      url: "http://200.62.239.170:830/play/a02x/index.m3u8"
-    },
-    {
-      name: "Food Network",
-      url: "http://200.62.239.170:830/play/a096/index.m3u8"
-    },
-    {
-      name: "France 24",
-      url: "http://200.62.239.170:830/play/a05a/index.m3u8"
-    },
-    {
-      name: "GLOBAL",
-      url: "http://200.62.239.170:830/play/a050/index.m3u8"
-    },
-    {
-      name: "Golden",
-      url: "http://200.62.239.170:830/play/a03b/index.m3u8"
-    },
-    {
-      name: "Golden Edge",
-      url: "http://200.62.239.170:830/play/a03a/index.m3u8"
-    },
-    {
-      name: "HBO Family HD",
-      url: "http://200.62.239.170:830/play/a00q/index.m3u8"
-    },
-    {
-      name: "HBO HD",
-      url: "http://200.62.239.170:830/play/a07w/index.m3u8"
-    },
-    {
-      name: "HBO MUNDI",
-      url: "http://200.62.239.170:830/play/a058/index.m3u8"
-    },
-    {
-      name: "HBO POP HD",
-      url: "http://200.62.239.170:830/play/a00g/index.m3u8"
-    },
-    {
-      name: "HBO Plus",
-      url: "http://200.62.239.170:830/play/a03f/index.m3u8"
-    },
-    {
-      name: "HBO Signature",
-      url: "http://200.62.239.170:830/play/a057/index.m3u8"
-    },
-    {
-      name: "HBO XTREME HD",
-      url: "http://200.62.239.170:830/play/a064/index.m3u8"
-    },
-    {
-      name: "HEI HD",
-      url: "http://200.62.239.170:830/play/a08s/index.m3u8"
-    },
-    {
-      name: "HGTV",
-      url: "http://200.62.239.170:830/play/a07o/index.m3u8"
-    },
-    {
-      name: "HOLA TV HD",
-      url: "http://200.62.239.170:830/play/a08t/index.m3u8"
-    },
-    {
-      name: "HTV",
-      url: "http://200.62.239.170:830/play/a031/index.m3u8"
-    },
-    {
-      name: "History 2",
-      url: "http://200.62.239.170:830/play/a02p/index.m3u8"
-    },
-    {
-      name: "History Channel HD",
-      url: "http://200.62.239.170:830/play/a068/index.m3u8"
-    },
-    {
-      name: "Home & Health HD",
-      url: "http://200.62.239.170:830/play/a095/index.m3u8"
-    },
-    {
-      name: "ID HD",
-      url: "http://200.62.239.170:830/play/a06f/index.m3u8"
-    },
-    {
-      name: "Kanal D Drama",
-      url: "http://200.62.239.170:830/play/a08v/index.m3u8"
-    },
-    {
-      name: "L1 MAX",
-      url: "http://200.62.239.170:830/play/a08r/index.m3u8"
-    },
-    {
-      name: "La Red HD",
-      url: "http://200.62.239.170:830/play/a07e/index.m3u8"
-    },
-    {
-      name: "Las Estrellas HD",
-      url: "http://200.62.239.170:830/play/a08u/index.m3u8"
-    },
-    {
-      name: "Latina HD",
-      url: "http://200.62.239.170:830/play/a04p/index.m3u8"
-    },
-    {
-      name: "Lifetime",
-      url: "http://200.62.239.170:830/play/a07r/index.m3u8"
-    },
-    {
-      name: "Love Nature",
-      url: "http://200.62.239.170:830/play/a08w/index.m3u8"
-    },
-    {
-      name: "MEGA HD",
-      url: "http://200.62.239.170:830/play/a00l/index.m3u8"
-    },
-    {
-      name: "MTV HD",
-      url: "http://200.62.239.170:830/play/a04a/index.m3u8"
-    },
-    {
-      name: "Movistar Deportes",
-      url: "http://200.62.239.170:830/play/a08y/index.m3u8"
-    },
-    {
-      name: "MásChic",
-      url: "http://200.62.239.170:830/play/a030/index.m3u8"
-    },
-    {
-      name: "NTN 24 Horas",
-      url: "http://200.62.239.170:830/play/a032/index.m3u8"
-    },
-    {
-      name: "Nat Geo HD",
-      url: "http://200.62.239.170:830/play/a069/index.m3u8"
-    },
-    {
-      name: "Nick HD",
-      url: "http://200.62.239.170:830/play/a00j/index.m3u8"
-    },
-    {
-      name: "Nick Jr.",
-      url: "http://200.62.239.170:830/play/a099/index.m3u8"
-    },
-    {
-      name: "Nick Music",
-      url: "http://200.62.239.170:830/play/a02u/index.m3u8"
-    },
-    {
-      name: "Nuestra Tele",
-      url: "http://200.62.239.170:830/play/a02t/index.m3u8"
-    },
-    {
-      name: "OROMAR TV",
-      url: "http://200.62.239.170:830/play/a07y/index.m3u8"
-    },
-    {
-      name: "Panamericana",
-      url: "http://200.62.239.170:830/play/a04w/index.m3u8"
-    },
-    {
-      name: "Pasiones HD",
-      url: "http://200.62.239.170:830/play/a062/index.m3u8"
-    },
-    {
-      name: "Playboy HD",
-      url: "http://200.62.239.170:830/play/a06y/index.m3u8"
-    },
-    {
-      name: "Plim Plim TV",
-      url: "http://200.62.239.170:830/play/a08x/index.m3u8"
-    },
-    {
-      name: "Plus TV Life",
-      url: "http://200.62.239.170:830/play/a08z/index.m3u8"
-    },
-    {
-      name: "RPP",
-      url: "http://200.62.239.170:830/play/a04z/index.m3u8"
-    },
-    {
-      name: "STAR CHANNEL HD",
-      url: "http://200.62.239.170:830/play/a06j/index.m3u8"
-    },
-    {
-      name: "Sony HD",
-      url: "http://200.62.239.170:830/play/a06c/index.m3u8"
-    },
-    {
-      name: "Space HD",
-      url: "http://200.62.239.170:830/play/a06g/index.m3u8"
-    },
-    {
-      name: "Stingray Concerts HD",
-      url: "http://200.62.239.170:830/play/a04k/index.m3u8"
-    },
-    {
-      name: "Studio Universal HD",
-      url: "http://200.62.239.170:830/play/a08o/index.m3u8"
-    },
-    {
-      name: "Sun Channel HD",
-      url: "http://200.62.239.170:830/play/a065/index.m3u8"
-    },
-    {
-      name: "TCM",
-      url: "http://200.62.239.170:830/play/a03c/index.m3u8"
-    },
-    {
-      name: "TLC",
-      url: "http://200.62.239.170:830/play/a07j/index.m3u8"
-    },
-    {
-      name: "TNT HD",
-      url: "http://200.62.239.170:830/play/a06a/index.m3u8"
-    },
-    {
-      name: "TNT Novelas HD",
-      url: "http://200.62.239.170:830/play/a06q/index.m3u8"
-    },
-    {
-      name: "TNT Series HD",
-      url: "http://200.62.239.170:830/play/a06n/index.m3u8"
-    },
-    {
-      name: "TNT Sports Premium HD",
-      url: "http://200.62.239.170:830/play/a00e/index.m3u8"
-    },
-    {
-      name: "TV Perú",
-      url: "http://200.62.239.170:830/play/a090/index.m3u8"
-    },
-    {
-      name: "TV+ HD",
-      url: "http://200.62.239.170:830/play/a07c/index.m3u8"
-    },
-    {
-      name: "TVE",
-      url: "http://200.62.239.170:830/play/a09b/index.m3u8"
-    },
-    {
-      name: "TVN HD",
-      url: "http://200.62.239.170:830/play/a00c/index.m3u8"
-    },
-    {
-      name: "Teen Nick",
-      url: "http://200.62.239.170:830/play/a02v/index.m3u8"
-    },
-    {
-      name: "Telefé",
-      url: "http://200.62.239.170:830/play/a09a/index.m3u8"
-    },
-    {
-      name: "Telemundo",
-      url: "http://200.62.239.170:830/play/a07m/index.m3u8"
-    },
-    {
-      name: "Tlnovelas",
-      url: "http://200.62.239.170:830/play/a08e/index.m3u8"
-    },
-    {
-      name: "Tooncast",
-      url: "http://200.62.239.170:830/play/a07n/index.m3u8"
-    },
-    {
-      name: "UNIVERSAL CHANNEL HD",
-      url: "http://200.62.239.170:830/play/a06l/index.m3u8"
-    },
-    {
-      name: "USA",
-      url: "http://200.62.239.170:830/play/a039/index.m3u8"
-    },
-    {
-      name: "Venus",
-      url: "http://200.62.239.170:830/play/a03h/index.m3u8"
-    },
-    {
-      name: "Via X Esports",
-      url: "http://200.62.239.170:830/play/a037/index.m3u8"
-    },
-    {
-      name: "Warner Channel HD",
-      url: "http://200.62.239.170:830/play/a06d/index.m3u8"
-    },
-    {
-      name: "Willax",
-      url: "http://200.62.239.170:830/play/a093/index.m3u8"
-    }
+    ["00_HBO2", "http://200.62.239.170:830/play/a08c/index.m3u8"],
+    ["A&E HD", "http://200.62.239.170:830/play/a03w/index.m3u8"],
+    ["AMC HD", "http://200.62.239.170:830/play/a048/index.m3u8"],
+    ["ATV", "http://200.62.239.170:830/play/a04y/index.m3u8"],
+    ["AXN HD", "http://200.62.239.170:830/play/a06e/index.m3u8"],
+    ["Adult Swim", "http://200.62.239.170:830/play/a07t/index.m3u8"],
+    ["America TV HD", "http://200.62.239.170:830/play/a04n/index.m3u8"],
+    ["Animal Planet HD", "http://200.62.239.170:830/play/a066/index.m3u8"],
+    ["Antena 3", "http://200.62.239.170:830/play/a053/index.m3u8"],
+    ["Atres Series", "http://200.62.239.170:830/play/a08m/index.m3u8"],
+    ["BBC World", "http://200.62.239.170:830/play/a051/index.m3u8"],
+    ["BETHEL TV", "http://200.62.239.170:830/play/a00u/index.m3u8"],
+    ["Baby TV", "http://200.62.239.170:830/play/a01v/index.m3u8"],
+    ["CHV HD", "http://200.62.239.170:830/play/a00d/index.m3u8"],
+    ["CNN Chile", "http://200.62.239.170:830/play/a07d/index.m3u8"],
+    ["CNN Español", "http://200.62.239.170:830/play/a022/index.m3u8"],
+    ["CNN International", "http://200.62.239.170:830/play/a097/index.m3u8"],
+    ["Canal 13 HD", "http://200.62.239.170:830/play/a06k/index.m3u8"],
+    ["Canal 24 Horas HD", "http://200.62.239.170:830/play/a07f/index.m3u8"],
+    ["Canal N", "http://200.62.239.170:830/play/a091/index.m3u8"],
+    ["Cartoon Network HD", "http://200.62.239.170:830/play/a094/index.m3u8"],
+    ["Cartoonito", "http://200.62.239.170:830/play/a09c/index.m3u8"],
+    ["Cinecanal HD", "http://200.62.239.170:830/play/a06b/index.m3u8"],
+    ["Cinemax HD", "http://200.62.239.170:830/play/a02j/index.m3u8"],
+    ["Comedy Central HD", "http://200.62.239.170:830/play/a06w/index.m3u8"],
+    ["D1 SPORTS | INKA", "http://200.62.239.170:830/play/a07b/index.m3u8"],
+    ["DHE HD", "http://200.62.239.170:830/play/a063/index.m3u8"],
+    ["DW Español", "http://200.62.239.170:830/play/a05l/index.m3u8"],
+    ["De Película", "http://200.62.239.170:830/play/a08f/index.m3u8"],
+    ["Discovery Channel HD", "http://200.62.239.170:830/play/a067/index.m3u8"],
+    ["Discovery Kids", "http://200.62.239.170:830/play/a08q/index.m3u8"],
+    ["Discovery Kids HD", "http://200.62.239.170:830/play/a098/index.m3u8"],
+    ["Discovery Science", "http://200.62.239.170:830/play/a07k/index.m3u8"],
+    ["Discovery Theater HD", "http://200.62.239.170:830/play/a00b/index.m3u8"],
+    ["Discovery Turbo", "http://200.62.239.170:830/play/a02i/index.m3u8"],
+    ["Discovery World HD", "http://200.62.239.170:830/play/a06o/index.m3u8"],
+    ["Disney HD", "http://200.62.239.170:830/play/a06h/index.m3u8"],
+    ["Disney Junior", "http://200.62.239.170:830/play/a02g/index.m3u8"],
+    ["Distrito Comedia", "http://200.62.239.170:830/play/a03i/index.m3u8"],
+    ["E! Entertainment TV", "http://200.62.239.170:830/play/a07l/index.m3u8"],
+    ["ESPN 2 HD", "http://200.62.239.170:830/play/a00f/index.m3u8"],
+    ["ESPN 3 HD", "http://200.62.239.170:830/play/a06r/index.m3u8"],
+    ["ESPN 4HD", "http://200.62.239.170:830/play/a06i/index.m3u8"],
+    ["ESPN 5HD", "http://200.62.239.170:830/play/a06m/index.m3u8"],
+    ["ESPN 6HD", "http://200.62.239.170:830/play/a03r/index.m3u8"],
+    ["ESPN 7HD", "http://200.62.239.170:830/play/a01a/index.m3u8"],
+    ["ESPN HD", "http://200.62.239.170:830/play/a00n/index.m3u8"],
+    ["ESPN Premium HD", "http://200.62.239.170:830/play/a00p/index.m3u8"],
+    ["EWTN", "http://200.62.239.170:830/play/a07q/index.m3u8"],
+    ["El Gourmet HD", "http://200.62.239.170:830/play/a03y/index.m3u8"],
+    ["Enlace", "http://200.62.239.170:830/play/a07s/index.m3u8"],
+    ["Europa Europa", "http://200.62.239.170:830/play/a03d/index.m3u8"],
+    ["Exitosa TV", "http://200.62.239.170:830/play/a092/index.m3u8"],
+    ["FX HD", "http://200.62.239.170:830/play/a01d/index.m3u8"],
+    ["Film&Arts", "http://200.62.239.170:830/play/a02x/index.m3u8"],
+    ["Food Network", "http://200.62.239.170:830/play/a096/index.m3u8"],
+    ["France 24", "http://200.62.239.170:830/play/a05a/index.m3u8"],
+    ["GLOBAL", "http://200.62.239.170:830/play/a050/index.m3u8"],
+    ["Golden", "http://200.62.239.170:830/play/a03b/index.m3u8"],
+    ["Golden Edge", "http://200.62.239.170:830/play/a03a/index.m3u8"],
+    ["HBO Family HD", "http://200.62.239.170:830/play/a00q/index.m3u8"],
+    ["HBO HD", "http://200.62.239.170:830/play/a07w/index.m3u8"],
+    ["HBO MUNDI", "http://200.62.239.170:830/play/a058/index.m3u8"],
+    ["HBO POP HD", "http://200.62.239.170:830/play/a00g/index.m3u8"],
+    ["HBO Plus", "http://200.62.239.170:830/play/a03f/index.m3u8"],
+    ["HBO Signature", "http://200.62.239.170:830/play/a057/index.m3u8"],
+    ["HBO XTREME HD", "http://200.62.239.170:830/play/a064/index.m3u8"],
+    ["HEI HD", "http://200.62.239.170:830/play/a08s/index.m3u8"],
+    ["HGTV", "http://200.62.239.170:830/play/a07o/index.m3u8"],
+    ["HOLA TV HD", "http://200.62.239.170:830/play/a08t/index.m3u8"],
+    ["HTV", "http://200.62.239.170:830/play/a031/index.m3u8"],
+    ["History 2", "http://200.62.239.170:830/play/a02p/index.m3u8"],
+    ["History Channel HD", "http://200.62.239.170:830/play/a068/index.m3u8"],
+    ["Home & Health HD", "http://200.62.239.170:830/play/a095/index.m3u8"],
+    ["ID HD", "http://200.62.239.170:830/play/a06f/index.m3u8"],
+    ["Kanal D Drama", "http://200.62.239.170:830/play/a08v/index.m3u8"],
+    ["L1 MAX", "http://200.62.239.170:830/play/a08r/index.m3u8"],
+    ["La Red HD", "http://200.62.239.170:830/play/a07e/index.m3u8"],
+    ["Las Estrellas HD", "http://200.62.239.170:830/play/a08u/index.m3u8"],
+    ["Latina HD", "http://200.62.239.170:830/play/a04p/index.m3u8"],
+    ["Lifetime", "http://200.62.239.170:830/play/a07r/index.m3u8"],
+    ["Love Nature", "http://200.62.239.170:830/play/a08w/index.m3u8"],
+    ["MEGA HD", "http://200.62.239.170:830/play/a00l/index.m3u8"],
+    ["MTV HD", "http://200.62.239.170:830/play/a04a/index.m3u8"],
+    ["Movistar Deportes", "http://200.62.239.170:830/play/a08y/index.m3u8"],
+    ["MásChic", "http://200.62.239.170:830/play/a030/index.m3u8"],
+    ["NTN 24 Horas", "http://200.62.239.170:830/play/a032/index.m3u8"],
+    ["Nat Geo HD", "http://200.62.239.170:830/play/a069/index.m3u8"],
+    ["Nick HD", "http://200.62.239.170:830/play/a00j/index.m3u8"],
+    ["Nick Jr.", "http://200.62.239.170:830/play/a099/index.m3u8"],
+    ["Nick Music", "http://200.62.239.170:830/play/a02u/index.m3u8"],
+    ["Nuestra Tele", "http://200.62.239.170:830/play/a02t/index.m3u8"],
+    ["OROMAR TV", "http://200.62.239.170:830/play/a07y/index.m3u8"],
+    ["Panamericana", "http://200.62.239.170:830/play/a04w/index.m3u8"],
+    ["Pasiones HD", "http://200.62.239.170:830/play/a062/index.m3u8"],
+    ["Playboy HD", "http://200.62.239.170:830/play/a06y/index.m3u8"],
+    ["Plim Plim TV", "http://200.62.239.170:830/play/a08x/index.m3u8"],
+    ["Plus TV Life", "http://200.62.239.170:830/play/a08z/index.m3u8"],
+    ["RPP", "http://200.62.239.170:830/play/a04z/index.m3u8"],
+    ["STAR CHANNEL HD", "http://200.62.239.170:830/play/a06j/index.m3u8"],
+    ["Sony HD", "http://200.62.239.170:830/play/a06c/index.m3u8"],
+    ["Space HD", "http://200.62.239.170:830/play/a06g/index.m3u8"],
+    ["Stingray Concerts HD", "http://200.62.239.170:830/play/a04k/index.m3u8"],
+    ["Studio Universal HD", "http://200.62.239.170:830/play/a08o/index.m3u8"],
+    ["Sun Channel HD", "http://200.62.239.170:830/play/a065/index.m3u8"],
+    ["TCM", "http://200.62.239.170:830/play/a03c/index.m3u8"],
+    ["TLC", "http://200.62.239.170:830/play/a07j/index.m3u8"],
+    ["TNT HD", "http://200.62.239.170:830/play/a06a/index.m3u8"],
+    ["TNT Novelas HD", "http://200.62.239.170:830/play/a06q/index.m3u8"],
+    ["TNT Series HD", "http://200.62.239.170:830/play/a06n/index.m3u8"],
+    ["TNT Sports Premium HD", "http://200.62.239.170:830/play/a00e/index.m3u8"],
+    ["TV Perú", "http://200.62.239.170:830/play/a090/index.m3u8"],
+    ["TV+ HD", "http://200.62.239.170:830/play/a07c/index.m3u8"],
+    ["TVE", "http://200.62.239.170:830/play/a09b/index.m3u8"],
+    ["TVN HD", "http://200.62.239.170:830/play/a00c/index.m3u8"],
+    ["Teen Nick", "http://200.62.239.170:830/play/a02v/index.m3u8"],
+    ["Telefé", "http://200.62.239.170:830/play/a09a/index.m3u8"],
+    ["Telemundo", "http://200.62.239.170:830/play/a07m/index.m3u8"],
+    ["Tlnovelas", "http://200.62.239.170:830/play/a08e/index.m3u8"],
+    ["Tooncast", "http://200.62.239.170:830/play/a07n/index.m3u8"],
+    ["UNIVERSAL CHANNEL HD", "http://200.62.239.170:830/play/a06l/index.m3u8"],
+    ["USA", "http://200.62.239.170:830/play/a039/index.m3u8"],
+    ["Venus", "http://200.62.239.170:830/play/a03h/index.m3u8"],
+    ["Via X Esports", "http://200.62.239.170:830/play/a037/index.m3u8"],
+    ["Warner Channel HD", "http://200.62.239.170:830/play/a06d/index.m3u8"],
+    ["Willax", "http://200.62.239.170:830/play/a093/index.m3u8"]
 
-  ];
+];
 
 
-  /*
-   * ============================================================
-   * ELEMENTOS
-   * ============================================================
-   */
+/* ============================================================
+   ELEMENTOS
+============================================================ */
 
-  const channelList = document.getElementById("channels");
-  const searchInput = document.getElementById("search");
-  const video = document.getElementById("video");
-  const status = document.getElementById("status");
+const video = document.getElementById("video");
+const channelsContainer = document.getElementById("channels");
+const search = document.getElementById("search");
+const status = document.getElementById("status");
 
-  let hls = null;
-  let currentChannel = null;
+let hls = null;
+let currentChannel = null;
+let reconnectTimer = null;
+let reconnectCount = 0;
 
 
-  /*
-   * ============================================================
-   * GENERAR LISTA
-   * ============================================================
-   */
+/* ============================================================
+   LISTA DE CANALES
+============================================================ */
 
-  function renderChannels(list = channels) {
+function renderChannels(list) {
 
-    channelList.innerHTML = "";
+    channelsContainer.innerHTML = "";
 
-    list.forEach((channel, index) => {
+    list.forEach((channel) => {
 
-      const item = document.createElement("div");
+        const item = document.createElement("div");
 
-      item.className = "channel";
-      item.dataset.index = index;
+        item.className = "channel";
 
-      item.innerHTML = `
-        <div class="channel-logo">
-          <img
-            src="https://www.google.com/s2/favicons?domain=${encodeURIComponent(channel.url)}&sz=128"
-            class="channel-logo"
-            onerror="this.style.display='none'"
-          >
-        </div>
+        item.dataset.name = channel[0];
 
-        <div class="channel-name">
-          ${escapeHtml(channel.name)}
-        </div>
-      `;
+        const logo = document.createElement("div");
 
-      item.onclick = () => {
+        logo.className = "channel-logo";
 
-        document
-          .querySelectorAll(".channel")
-          .forEach(el => el.classList.remove("active"));
+        /*
+         * No dependemos de logos externos.
+         * De esta manera la lista siempre aparece.
+         */
 
-        item.classList.add("active");
+        logo.innerHTML = "📺";
 
-        playChannel(channel);
+        const name = document.createElement("div");
 
-      };
+        name.className = "channel-name";
 
-      channelList.appendChild(item);
+        name.textContent = channel[0];
+
+        item.appendChild(logo);
+        item.appendChild(name);
+
+        item.addEventListener("click", () => {
+
+            document
+                .querySelectorAll(".channel")
+                .forEach(el => el.classList.remove("active"));
+
+            item.classList.add("active");
+
+            playChannel(channel);
+
+        });
+
+        channelsContainer.appendChild(item);
 
     });
+}
 
-  }
 
+/* ============================================================
+   REPRODUCIR CANAL
+============================================================ */
 
-  /*
-   * ============================================================
-   * REPRODUCIR CANAL
-   * ============================================================
-   */
-
-  function playChannel(channel) {
+function playChannel(channel) {
 
     currentChannel = channel;
 
-    status.className = "status loading";
-    status.textContent = "Conectando con " + channel.name + "...";
+    reconnectCount = 0;
 
-    if (hls) {
+    if (reconnectTimer) {
 
-      hls.destroy();
-      hls = null;
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
 
     }
 
-    video.pause();
+    destroyPlayer();
 
-    video.removeAttribute("src");
-    video.load();
+    status.className = "status";
+    status.textContent = "Conectando con " + channel[0] + "...";
 
 
     /*
@@ -832,272 +513,494 @@
 
     if (Hls.isSupported()) {
 
-      hls = new Hls({
+        hls = new Hls({
 
-        enableWorker: true,
+            enableWorker: true,
 
-        lowLatencyMode: false,
+            lowLatencyMode: false,
 
-        backBufferLength: 30,
+            backBufferLength: 30,
 
-        maxBufferLength: 30,
+            maxBufferLength: 30,
 
-        maxMaxBufferLength: 60,
+            maxMaxBufferLength: 60,
 
-        liveSyncDurationCount: 3,
+            liveSyncDurationCount: 3,
 
-        liveMaxLatencyDurationCount: 6,
+            liveMaxLatencyDurationCount: 6,
 
-        manifestLoadingTimeOut: 15000,
+            manifestLoadingTimeOut: 15000,
 
-        manifestLoadingMaxRetry: 6,
+            manifestLoadingMaxRetry: 4,
 
-        manifestLoadingRetryDelay: 1000,
+            manifestLoadingRetryDelay: 1000,
 
-        levelLoadingTimeOut: 15000,
+            levelLoadingTimeOut: 15000,
 
-        levelLoadingMaxRetry: 6,
+            levelLoadingMaxRetry: 4,
 
-        levelLoadingRetryDelay: 1000,
+            levelLoadingRetryDelay: 1000,
 
-        fragLoadingTimeOut: 15000,
+            fragLoadingTimeOut: 15000,
 
-        fragLoadingMaxRetry: 6,
+            fragLoadingMaxRetry: 4,
 
-        fragLoadingRetryDelay: 1000
+            fragLoadingRetryDelay: 1000
 
-      });
-
-
-      hls.loadSource(channel.url);
-
-      hls.attachMedia(video);
+        });
 
 
-      hls.on(Hls.Events.MANIFEST_PARSED, function() {
-
-        status.textContent = channel.name;
-
-        video.play().catch(() => {});
-
-      });
+        hls.attachMedia(video);
 
 
-      hls.on(Hls.Events.FRAG_LOADED, function() {
+        hls.on(Hls.Events.MEDIA_ATTACHED, () => {
 
-        status.textContent = channel.name;
+            hls.loadSource(channel[1]);
 
-      });
+        });
 
 
-      hls.on(Hls.Events.ERROR, function(event, data) {
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
 
-        console.log("HLS:", data);
+            status.textContent = channel[0];
 
-        if (data.fatal) {
+            video.play().catch(() => {});
 
-          status.className = "status error";
+        });
 
-          status.textContent = "Error de reproducción. Reintentando...";
 
-          reconnect();
+        hls.on(Hls.Events.ERROR, (event, data) => {
 
-        }
+            console.log(
+                "HLS ERROR:",
+                data.type,
+                data.details,
+                data
+            );
 
-      });
+
+            if (!data.fatal) {
+
+                return;
+
+            }
+
+
+            if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+
+                status.className = "status";
+                status.textContent =
+                    "Problema de red. Reconectando...";
+
+                reconnect();
+
+            }
+
+            else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+
+                status.className = "status";
+                status.textContent =
+                    "Recuperando reproducción...";
+
+                try {
+
+                    hls.recoverMediaError();
+
+                } catch (e) {
+
+                    reconnect();
+
+                }
+
+            }
+
+            else {
+
+                status.className = "status error";
+                status.textContent =
+                    "No se pudo reproducir el canal. Reintentando...";
+
+                reconnect();
+
+            }
+
+        });
 
     }
 
 
     /*
      * HLS NATIVO
-     * Safari / algunos navegadores
      */
 
-    else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    else if (
+        video.canPlayType(
+            "application/vnd.apple.mpegurl"
+        )
+    ) {
 
-      video.src = channel.url;
+        video.src = channel[1];
 
-      video.addEventListener(
-        "loadedmetadata",
-        function() {
+        video.addEventListener(
+            "loadedmetadata",
+            () => {
 
-          status.textContent = channel.name;
+                status.textContent = channel[0];
 
-          video.play().catch(() => {});
+                video.play().catch(() => {});
 
-        },
-        { once: true }
-      );
+            },
+            { once: true }
+        );
+
+
+        video.addEventListener(
+            "error",
+            () => {
+
+                reconnect();
+
+            },
+            { once: true }
+        );
 
     }
 
     else {
 
-      status.className = "status error";
+        status.className = "status error";
 
-      status.textContent =
-        "Este navegador no soporta reproducción HLS.";
+        status.textContent =
+            "Tu navegador no soporta HLS.";
 
     }
 
-  }
+}
 
 
-  /*
-   * ============================================================
-   * RECONEXIÓN
-   * ============================================================
-   */
+/* ============================================================
+   DESTRUIR REPRODUCTOR
+============================================================ */
 
-  let reconnectTimer = null;
-  let reconnectAttempts = 0;
+function destroyPlayer() {
 
-  function reconnect() {
+    if (hls) {
+
+        try {
+            hls.destroy();
+        } catch (e) {}
+
+        hls = null;
+
+    }
+
+    video.pause();
+
+    video.removeAttribute("src");
+
+    video.load();
+
+}
+
+
+/* ============================================================
+   RECONEXIÓN
+============================================================ */
+
+function reconnect() {
 
     if (!currentChannel) {
-      return;
+        return;
     }
 
     if (reconnectTimer) {
-      clearTimeout(reconnectTimer);
+        return;
     }
 
-    reconnectAttempts++;
+    reconnectCount++;
 
-    const delay = Math.min(
-      15000,
-      2000 * reconnectAttempts
-    );
+    /*
+     * 2s
+     * 3s
+     * 4s
+     * ...
+     * máximo 10s
+     */
 
-    status.className = "status loading";
+    const delay =
+        Math.min(
+            10000,
+            1000 + reconnectCount * 1000
+        );
+
+
+    status.className = "status";
 
     status.textContent =
-      "Reintentando " +
-      currentChannel.name +
-      " en " +
-      Math.ceil(delay / 1000) +
-      " segundos...";
+        "Reintentando " +
+        currentChannel[0] +
+        "...";
+
 
     reconnectTimer = setTimeout(() => {
 
-      playChannel(currentChannel);
+        reconnectTimer = null;
+
+        if (currentChannel) {
+
+            playChannelWithoutReset(
+                currentChannel
+            );
+
+        }
 
     }, delay);
 
-  }
+}
 
 
-  /*
-   * ============================================================
-   * DETECTAR STALL
-   * ============================================================
-   */
+/* ============================================================
+   RECONEXIÓN SIN RESETEAR CONTADOR
+============================================================ */
 
-  let lastCurrentTime = 0;
-  let lastProgressTime = Date.now();
+function playChannelWithoutReset(channel) {
 
-  setInterval(() => {
+    destroyPlayer();
 
-    if (!currentChannel || video.paused) {
-      return;
+    status.className = "status";
+
+    status.textContent =
+        "Reconectando " +
+        channel[0] +
+        "...";
+
+
+    if (Hls.isSupported()) {
+
+        hls = new Hls({
+
+            enableWorker: true,
+
+            lowLatencyMode: false,
+
+            backBufferLength: 30,
+
+            maxBufferLength: 30,
+
+            maxMaxBufferLength: 60,
+
+            liveSyncDurationCount: 3,
+
+            liveMaxLatencyDurationCount: 6,
+
+            manifestLoadingTimeOut: 15000,
+
+            manifestLoadingMaxRetry: 4,
+
+            manifestLoadingRetryDelay: 1000,
+
+            levelLoadingTimeOut: 15000,
+
+            levelLoadingMaxRetry: 4,
+
+            levelLoadingRetryDelay: 1000,
+
+            fragLoadingTimeOut: 15000,
+
+            fragLoadingMaxRetry: 4,
+
+            fragLoadingRetryDelay: 1000
+
+        });
+
+
+        hls.attachMedia(video);
+
+
+        hls.on(
+            Hls.Events.MEDIA_ATTACHED,
+            () => {
+
+                hls.loadSource(channel[1]);
+
+            }
+        );
+
+
+        hls.on(
+            Hls.Events.MANIFEST_PARSED,
+            () => {
+
+                status.textContent =
+                    channel[0];
+
+                video.play().catch(() => {});
+
+            }```html
+        );
+
+
+        hls.on(
+            Hls.Events.ERROR,
+            (event, data) => {
+
+                console.log(
+                    "HLS ERROR:",
+                    data
+                );
+
+
+                if (!data.fatal) {
+                    return;
+                }
+
+
+                if (
+                    data.type ===
+                    Hls.ErrorTypes.MEDIA_ERROR
+                ) {
+
+                    try {
+
+                        hls.recoverMediaError();
+
+                        return;
+
+                    } catch (e) {}
+
+                }
+
+
+                reconnect();
+
+            }
+        );
+
     }
 
-    const currentTime = video.currentTime;
+}
+
+
+/* ============================================================
+   DETECCIÓN DE VIDEO CONGELADO
+============================================================ */
+
+let lastTime = 0;
+let lastProgress = Date.now();
+
+setInterval(() => {
+
+    if (!currentChannel) {
+        return;
+    }
+
+    if (video.paused) {
+        return;
+    }
+
+    const time = video.currentTime;
+
 
     if (
-      currentTime > 0 &&
-      currentTime !== lastCurrentTime
+        Number.isFinite(time) &&
+        time !== lastTime
     ) {
 
-      lastCurrentTime = currentTime;
-      lastProgressTime = Date.now();
+        lastTime = time;
 
-      reconnectAttempts = 0;
+        lastProgress = Date.now();
 
-      if (
-        status.classList.contains("loading")
-      ) {
+        /*
+         * Si lleva funcionando bien,
+         * reiniciamos el contador de reconexiones.
+         */
+
+        if (
+            Date.now() - lastProgress < 5000
+        ) {
+
+            reconnectCount = 0;
+
+        }
 
         status.className = "status";
-        status.textContent = currentChannel.name;
 
-      }
+        status.textContent =
+            currentChannel[0];
 
     }
 
-    else if (
-      Date.now() - lastProgressTime > 15000
+
+    /*
+     * Más de 20 segundos sin avanzar
+     */
+
+    if (
+        Date.now() - lastProgress > 20000
     ) {
 
-      console.log("Video detenido. Reconectando...");
+        console.log(
+            "STREAM DETENIDO. RECONEXIÓN."
+        );
 
-      lastProgressTime = Date.now();
+        lastProgress = Date.now();
 
-      reconnect();
+        reconnect();
 
     }
 
-  }, 3000);
+}, 3000);
 
 
-  /*
-   * ============================================================
-   * BUSCADOR
-   * ============================================================
-   */
+/* ============================================================
+   BUSCADOR
+============================================================ */
 
-  function filterChannels() {
+search.addEventListener(
+    "input",
+    () => {
 
-    const text =
-      searchInput.value
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-
-    const filtered = channels.filter(channel => {
-
-      const name =
-        channel.name
-          .toLowerCase()
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "");
-
-      return name.includes(text);
-
-    });
-
-    renderChannels(filtered);
-
-  }
+        const text =
+            search.value
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(
+                    /[\u0300-\u036f]/g,
+                    ""
+                );
 
 
-  /*
-   * ============================================================
-   * ESCAPAR HTML
-   * ============================================================
-   */
+        const filtered =
+            channels.filter(channel => {
 
-  function escapeHtml(text) {
+                const name =
+                    channel[0]
+                        .toLowerCase()
+                        .normalize("NFD")
+                        .replace(
+                            /[\u0300-\u036f]/g,
+                            ""
+                        );
 
-    const div = document.createElement("div");
+                return name.includes(text);
 
-    div.textContent = text;
-
-    return div.innerHTML;
-
-  }
+            });
 
 
-  /*
-   * ============================================================
-   * INICIO
-   * ============================================================
-   */
+        renderChannels(filtered);
 
-  renderChannels();
+    }
+);
+
+
+/* ============================================================
+   INICIO
+============================================================ */
+
+renderChannels(channels);
 
 </script>
 
 </body>
 </html>
+````
